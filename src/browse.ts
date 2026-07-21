@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { OPCUAClient, MessageSecurityMode, SecurityPolicy, AttributeIds, BrowseDirection } from "node-opcua";
+import { OPCUAClient, MessageSecurityMode, SecurityPolicy, NodeClass } from "node-opcua";
 
 const endpointUrl = process.env.OPCUA_ENDPOINT ?? "opc.tcp://192.168.5.95:49320";
 const MAX_DEPTH = 4;
@@ -9,8 +9,10 @@ async function browseRecursive(session: any, nodeId: string, depth: number, pref
 
   const browseResult = await session.browse(nodeId);
   for (const ref of browseResult.references ?? []) {
+    if (ref.browseName.toString() === "Server") continue; // standart OPC UA diagnostik alt agaci, gurultu
+
     console.log(`${prefix}${ref.browseName.toString()}  (${ref.nodeId.toString()})`);
-    if (ref.nodeClass.toString() === "Object" || ref.nodeClass.toString() === "Variable") {
+    if (ref.nodeClass === NodeClass.Object || ref.nodeClass === NodeClass.Variable) {
       await browseRecursive(session, ref.nodeId, depth + 1, prefix + "  ");
     }
   }
