@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>VatanKepServer - Ekstruder Izleme</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  #status { color: #888; font-size: 13px; margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; max-width: 900px; }
+  th, td { text-align: left; padding: 8px 14px; border-bottom: 1px solid #333; }
+  th { color: #999; font-weight: 500; font-size: 13px; text-transform: uppercase; }
+  td.stale { color: #666; }
+  td.value { font-variant-numeric: tabular-nums; font-size: 16px; }
+  tr.machine-stopped td.value { color: #777; }
+</style>
+</head>
+<body>
+  <h1>Vatan Kablo — Ekstruder Hatti Canli Izleme</h1>
+  <div id="status">Yukleniyor...</div>
+  <table>
+    <thead>
+      <tr><th>Makine</th><th>Cap</th><th>Metre</th><th>Hat Hizi</th><th>Son Guncelleme</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+<script>
+async function refresh() {
+  try {
+    const res = await fetch("/api/latest");
+    const rows = await res.json();
+
+    const byMachine = {};
+    for (const r of rows) {
+      byMachine[r.machine_id] ??= {};
+      byMachine[r.machine_id][r.tag_label] = { value: r.value, recorded_at: r.recorded_at };
+    }
+
+    const machineIds = Object.keys(byMachine).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true })
+    );
+
+    const now = Date.now();
+    const tbody = document.getElementById("rows");
+    tbody.innerHTML = "";
+
+    for (const id of machineIds) {
+      const tags = byMachine[id];
+      const newest = Math.max(...Object.values(tags).map((t) => t.recorded_at));
+      const staleMs = now - newest;
+      const staleClass = staleMs > 5000 ? "stale" : "";
+
+      const fmt = (t) => (t && t.value !== null && t.value !== undefined ? Number(t.value).toFixed(2) : "-");
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${id}</td>
+        <td class="value ${staleClass}">${fmt(tags.Cap)}</td>
+        <td class="value ${staleClass}">${fmt(tags.Metre)}</td>
+        <td class="value ${staleClass}">${fmt(tags.HatHizi)}</td>
+        <td class="${staleClass}">${new Date(newest).toLocaleTimeString("tr-TR")}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    document.getElementById("status").textContent =
+      "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
+  } catch (err) {
+    document.getElementById("status").textContent = "Baglanti hatasi: " + err;
+  }
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

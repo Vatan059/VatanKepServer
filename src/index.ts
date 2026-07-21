@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { OPCUAClient, MessageSecurityMode, SecurityPolicy, AttributeIds, TimestampsToReturn, ClientSubscription, ClientMonitoredItem, DataValue } from "node-opcua";
 import { machines } from "./machines";
+import { recordReading } from "./db";
 
 const endpointUrl = process.env.OPCUA_ENDPOINT ?? "opc.tcp://192.168.5.95:49320";
 
@@ -41,7 +42,10 @@ async function main() {
       );
 
       monitoredItem.on("changed", (dataValue: DataValue) => {
-        console.log(`${new Date().toISOString()}  ${machine.id}.${tag.label} = ${dataValue.value.value}`);
+        const value = dataValue.value.value;
+        const now = Date.now();
+        console.log(`${new Date(now).toISOString()}  ${machine.id}.${tag.label} = ${value}`);
+        recordReading(machine.id, tag.label, typeof value === "number" ? value : null, now);
       });
 
       monitoredItem.on("err", (message: string) => {
