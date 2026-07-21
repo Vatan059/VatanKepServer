@@ -10,9 +10,6 @@ const OUTPUT_FILE = "tags.txt";
 // Verilmezse Objects altindaki TUM kanallari tarar (uzun surebilir).
 const channelFilter = process.argv[2];
 
-// Siemens/Modbus internal tanilama-istatistik tag'leri (gercek uretim verisi degil)
-const NOISY_PREFIXES = ["_Statistics", "_InternalTags", "_SystemTags"];
-
 let lineCount = 0;
 const outStream = fs.createWriteStream(OUTPUT_FILE, { flags: "w" });
 
@@ -31,7 +28,7 @@ async function browseRecursive(session: any, nodeId: string, depth: number, pref
   for (const ref of browseResult.references ?? []) {
     const name = ref.browseName.toString();
     if (name === "Server") continue; // standart OPC UA diagnostik alt agaci
-    if (NOISY_PREFIXES.some((p) => name.startsWith(p))) continue;
+    if (name.startsWith("_")) continue; // KEPServerEX dahili sistem/istatistik tag'leri
 
     writeLine(`${prefix}${name}  (${ref.nodeId.toString()})`);
     if (ref.nodeClass === NodeClass.Object || ref.nodeClass === NodeClass.Variable) {
