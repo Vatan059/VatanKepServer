@@ -27,8 +27,9 @@ async function browseRecursive(session: any, nodeId: string, depth: number, pref
   const browseResult = await session.browse(nodeId);
   for (const ref of browseResult.references ?? []) {
     const name = ref.browseName.toString();
-    if (name === "Server") continue; // standart OPC UA diagnostik alt agaci
-    if (name.startsWith("_")) continue; // KEPServerEX dahili sistem/istatistik tag'leri
+    const bareName = name.replace(/^\d+:/, ""); // "2:_System" -> "_System" (namespace on eki temizlenir)
+    if (bareName === "Server") continue; // standart OPC UA diagnostik alt agaci
+    if (bareName.startsWith("_")) continue; // KEPServerEX dahili sistem/istatistik tag'leri
 
     writeLine(`${prefix}${name}  (${ref.nodeId.toString()})`);
     if (ref.nodeClass === NodeClass.Object || ref.nodeClass === NodeClass.Variable) {
