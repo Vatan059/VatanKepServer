@@ -4,6 +4,13 @@ import path from "node:path";
 const DB_PATH = path.join(__dirname, "..", "data.db");
 const db = new DatabaseSync(DB_PATH);
 
+// WAL: es zamanli okuma (dashboard) ve yazma (toplayici) birbirini kilitlemesin.
+// busy_timeout: yine de bir an kilitlenirse hata firlatmadan once bekleyip tekrar dener.
+db.exec(`
+  PRAGMA journal_mode = WAL;
+  PRAGMA busy_timeout = 5000;
+`);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS readings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
