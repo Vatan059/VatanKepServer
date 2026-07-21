@@ -44,8 +44,19 @@ export function getLatestReadings() {
 }
 
 const getHistoryStmt = db.prepare(
-  "SELECT value, recorded_at FROM readings WHERE machine_id = ? AND tag_label = ? ORDER BY recorded_at DESC LIMIT ?"
+  "SELECT value, recorded_at FROM readings WHERE machine_id = ? AND tag_label = ? AND recorded_at >= ? ORDER BY recorded_at ASC LIMIT ?"
 );
-export function getHistory(machineId: string, tagLabel: string, limit = 200) {
-  return getHistoryStmt.all(machineId, tagLabel, limit);
+
+export interface HistoryPoint {
+  value: number | null;
+  recorded_at: number;
+}
+
+export function getHistory(machineId: string, tagLabel: string, sinceMs = 0, limit = 3000): HistoryPoint[] {
+  return getHistoryStmt.all(machineId, tagLabel, sinceMs, limit) as unknown as HistoryPoint[];
+}
+
+const getMachineIdsStmt = db.prepare("SELECT DISTINCT machine_id FROM latest ORDER BY machine_id");
+export function getMachineIds(): string[] {
+  return (getMachineIdsStmt.all() as { machine_id: string }[]).map((r) => r.machine_id);
 }

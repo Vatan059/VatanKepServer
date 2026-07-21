@@ -5,6 +5,7 @@
 <title>VatanKepServer - Ekstruder Izleme</title>
 <style>
   body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 24px; }
+  a { color: #6da7ec; }
   h1 { font-size: 20px; margin-bottom: 4px; }
   #status { color: #888; font-size: 13px; margin-bottom: 20px; }
   table { border-collapse: collapse; width: 100%; max-width: 900px; }
@@ -20,7 +21,7 @@
   <div id="status">Yukleniyor...</div>
   <table>
     <thead>
-      <tr><th>Makine</th><th>Cap</th><th>Metre</th><th>Hat Hizi</th><th>Son Guncelleme</th></tr>
+      <tr><th>Makine</th><th>Cap</th><th>Metre</th><th>Hat Hizi</th><th>Son Guncelleme</th><th></th></tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
@@ -60,6 +61,7 @@ async function refresh() {
         <td class="value ${staleClass}">${fmt(tags.Metre)}</td>
         <td class="value ${staleClass}">${fmt(tags.HatHizi)}</td>
         <td class="${staleClass}">${new Date(newest).toLocaleTimeString("tr-TR")}</td>
+        <td><a href="/history.html?machine=${encodeURIComponent(id)}">Gecmis</a></td>
       `;
       tbody.appendChild(tr);
     }
