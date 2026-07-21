@@ -1,12 +1,8 @@
 import "dotenv/config";
 import { OPCUAClient, MessageSecurityMode, SecurityPolicy, AttributeIds, TimestampsToReturn, ClientSubscription, ClientMonitoredItem, DataValue } from "node-opcua";
+import { machines } from "./machines";
 
 const endpointUrl = process.env.OPCUA_ENDPOINT ?? "opc.tcp://192.168.5.95:49320";
-
-// TODO: browse.ts ile kesfedilen gercek node-id'lerle degistir
-const tagsToWatch: { name: string; nodeId: string }[] = [
-  // { name: "Ex7-Makine.Hiz", nodeId: "ns=2;s=Ex7-Makine.Hiz" },
-];
 
 async function main() {
   const client = OPCUAClient.create({
@@ -35,17 +31,23 @@ async function main() {
   subscription.on("started", () => console.log(`Subscription basladi (id=${subscription.subscriptionId}).`));
   subscription.on("terminated", () => console.log("Subscription sonlandi."));
 
-  for (const tag of tagsToWatch) {
-    const monitoredItem = ClientMonitoredItem.create(
-      subscription,
-      { nodeId: tag.nodeId, attributeId: AttributeIds.Value },
-      { samplingInterval: 500, discardOldest: true, queueSize: 10 },
-      TimestampsToReturn.Both
-    );
+  for (const machine of machines) {
+    for (const tag of machine.tags) {
+      const monitoredItem = ClientMonitoredItem.create(
+        subscription,
+        { nodeId: tag.nodeId, attributeId: AttributeIds.Value },
+        { samplingInterval: 500, discardOldest: true, queueSize: 10 },
+        TimestampsToReturn.Both
+      );
 
-    monitoredItem.on("changed", (dataValue: DataValue) => {
-      console.log(`${new Date().toISOString()}  ${tag.name} = ${dataValue.value.value}`);
-    });
+      monitoredItem.on("changed", (dataValue: DataValue) => {
+        console.log(`${new Date().toISOString()}  ${machine.id}.${tag.label} = ${dataValue.value.value}`);
+      });
+
+      monitoredItem.on("err", (message: string) => {
+        console.error(`${machine.id}.${tag.label} (${tag.nodeId}) HATA: ${message}`);
+      });
+    }
   }
 
   process.on("SIGINT", async () => {
