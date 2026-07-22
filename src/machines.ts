@@ -321,27 +321,126 @@ const noTags = (ids: string[]): Machine[] => ids.map((id) => ({ id, tags: [] }))
 // Her grup icin KEPServerEX'teki (tags.txt) gercek kanal adlariyla karsilastirildi;
 // TREX'te tanimli olup KEPServerEX'te kanali olmayan is istasyonlari gruba eklenmedi.
 
-const zirhlama = noTags(["ST8-Makine", "ST10-Makine", "ST11-Makine", "ST12-Makine", "ST13-Makine", "ST15-Makine", "ST18-Makine"]);
+const zirhlama: Machine[] = [
+  {
+    id: "ST8-Makine",
+    tags: [
+      { label: "Cap", nodeId: "ns=2;s=ST8-Makine.ST8.mak_Cap" },
+      { label: "Metre", nodeId: "ns=2;s=ST8-Makine.ST8.METRE SAy" },
+    ],
+  },
+  { id: "ST10-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST10-Makine.ST10.ST10-Metre" }] },
+  { id: "ST11-Makine", tags: [{ label: "Cap", nodeId: "ns=2;s=ST11-Makine.ST11.KABLO_CAP" }] },
+  { id: "ST12-Makine", tags: [] }, // sadece "Test" tag'i var, gercek uretim tag'i yok
+  { id: "ST13-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST13-Makine.ST13.Metre" }] },
+  { id: "ST15-Makine", tags: [] }, // sadece "Test" tag'i var
+  { id: "ST18-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST18-Makine.ST18.ToplamMetre" }] },
+];
 // TREX'te var ama KEPServerEX'te kanali yok: MT01, MT02, ST09, ST25
 
-const kangal = noTags(["CM1", "CM2", "CM3-Makine", "CM4"]);
+const kangal: Machine[] = [
+  {
+    id: "CM1",
+    tags: [
+      { label: "HatHizi", nodeId: "ns=2;s=CM1.CM1.SIMOTION.unit/.variable_.hmi_.normal_hat_hizi" },
+      { label: "Metre", nodeId: "ns=2;s=CM1.CM1.SIMOTION.unit/.variable_.yapilan_metraj" },
+      { label: "KangalSayisi", nodeId: "ns=2;s=CM1.CM1.SIMOTION.unit/.variable_.hmi_.sarilan_kangal_sayisi" },
+    ],
+  },
+  {
+    id: "CM2",
+    tags: [
+      { label: "HatHizi", nodeId: "ns=2;s=CM2.CM2.SIMOTION.unit/.variable_.hmi_.hat_hizi" },
+      { label: "Cap", nodeId: "ns=2;s=CM2.CM2.SIMOTION.unit/.variable_.hmi_.kablo_capi" },
+      { label: "Metre", nodeId: "ns=2;s=CM2.CM2.SIMOTION.unit/.variable_.hmi_.kablo_uzunlugu" },
+      { label: "KangalSayisi", nodeId: "ns=2;s=CM2.CM2.SIMOTION.unit/.variable_.hmi_.sarilan_kangal_sayisi" },
+    ],
+  },
+  {
+    id: "CM3-Makine",
+    tags: [
+      { label: "HatHizi", nodeId: "ns=2;s=CM3-Makine.CM3.enkoder_hathizi" },
+      { label: "Metre", nodeId: "ns=2;s=CM3-Makine.CM3.CM3-Metre" },
+    ],
+  },
+  {
+    id: "CM4",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=CM4.CM4AnaEkran.CM4Metre" },
+      { label: "Cap", nodeId: "ns=2;s=CM4.CM4AnaEkran.kablokalinligi" },
+      { label: "KangalSayisi", nodeId: "ns=2;s=CM4.CM4AnaEkran.sarilan_kangal_sayisi" },
+    ],
+  },
+];
 // TREX'te var ama KEPServerEX'te kanali yok: CM05
 
+// AK1/AK2'nin tum tag'leri (VERICI_DB.REAL_59 gibi) etiketsiz genel isimler -
+// hangisinin "metre/hiz" oldugu isimden anlasilmiyor, ayrica KEPServerEX Quick
+// Client'ta Quality=Bad gorunuyordu (canli veri gelmiyor). Teyit gerekiyor.
 const aktarma = noTags(["AK1-Makine", "AK2-Makine"]);
 // TREX'te var ama KEPServerEX'te kanali yok: AK03
 
-const telCekme = noTags([
-  "RB1-Makine",
-  "RB2-Makine",
-  "RB3-Makine",
-  "RB4-Makine",
-  "RB5-Makine",
-  "RB6-Makine",
-  "MW1-Makine",
-  "MW2-Makine",
-  "MW3-Codesys",
-  "MW4-Makine",
-]);
+const telCekme: Machine[] = [
+  { id: "RB1-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=RB1-Makine.RB1.Metre" }] },
+  {
+    id: "RB2-Makine",
+    tags: [
+      { label: "HatHizi", nodeId: "ns=2;s=RB2-Makine.RB2.HatHızı" },
+      { label: "Cap", nodeId: "ns=2;s=RB2-Makine.RB2.RB2-CAP" },
+      { label: "Metre", nodeId: "ns=2;s=RB2-Makine.RB2.SEPET1-METRE" },
+    ],
+  },
+  { id: "RB3-DoubleSpooler", tags: [{ label: "Metre", nodeId: "ns=2;s=RB3-DoubleSpooler.RB3-DS.RB3-DoubleSpooler-Metre" }] },
+  { id: "RB3-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=RB3-Makine.RB3.Rb3MetreMakara" }] },
+  {
+    id: "RB4-Makine",
+    tags: [
+      { label: "HatHizi", nodeId: "ns=2;s=RB4-Makine.RB4.TAKE_UP_GVL.GENERAL.LINE SPEED M MIN" },
+      { label: "Metre", nodeId: "ns=2;s=RB4-Makine.RB4.TAKE_UP_GVL.GENERAL.PRODUCT METER ACTUAL" },
+      { label: "Cap", nodeId: "ns=2;s=RB4-Makine.RB4.TAKE_UP_GVL.RIGHT.SPOOLER DIAMETER" },
+    ],
+  },
+  {
+    id: "RB5-Makine",
+    tags: [
+      { label: "HatHizi", nodeId: "ns=2;s=RB5-Makine.RB5.CONTROL.ACTUAL LINE SPEED m/dk" },
+      { label: "Metre", nodeId: "ns=2;s=RB5-Makine.RB5.ACTUAL PRODUCTION METER m" },
+      { label: "Cap", nodeId: "ns=2;s=RB5-Makine.RB5.CONTROL.WHEEL DIAMETER m" },
+    ],
+  },
+  { id: "RB6-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=RB6-Makine.RB6.Coiler1-Metre" }] },
+  {
+    id: "MW1-Makine",
+    tags: [
+      { label: "HatHizi", nodeId: "ns=2;s=MW1-Makine.MW1.MW1-Hız" },
+      { label: "Metre", nodeId: "ns=2;s=MW1-Makine.MW1.MW1-ASarıcı-Metre" },
+    ],
+  },
+  {
+    id: "MW2-Makine",
+    tags: [
+      { label: "HatHizi", nodeId: "ns=2;s=MW2-Makine.MW2.MW2-Hız" },
+      { label: "Metre", nodeId: "ns=2;s=MW2-Makine.MW2.MW2-Metre" },
+    ],
+  },
+  {
+    // Cok telli (35+ tel) tel cekme makinesi - sadece 1. sarici/tel temsili olarak eklendi.
+    id: "MW3-Codesys",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=MW3-Codesys.MW3.GLOBAL.metre_real" },
+      { label: "HatHizi", nodeId: "ns=2;s=MW3-Codesys.MW3.GLOBAL.reel_hiz" },
+      { label: "Cap", nodeId: "ns=2;s=MW3-Codesys.MW3.GLOBAL.sarici1_tel_capi" },
+    ],
+  },
+  {
+    id: "MW4-Makine",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=MW4-Makine.MW4.GLOBAL.metre_real" },
+      { label: "HatHizi", nodeId: "ns=2;s=MW4-Makine.MW4.GLOBAL.reel_hiz" },
+      { label: "Cap", nodeId: "ns=2;s=MW4-Makine.MW4.GLOBAL.sarici1_tel_capi" },
+    ],
+  },
+];
 // Tum TREX is istasyonlari (MW01-04, RB01-06) KEPServerEX'te karsiligini buldu.
 
 const iletkenBukum: Machine[] = [
@@ -379,22 +478,39 @@ const iletkenBukum: Machine[] = [
   },
 ];
 
-const iletkenBukumDiger = noTags([
-  "ST1-Makine",
-  "ST2-Makine",
-  "ST4-Makine",
-  "ST16-Makine",
-  "ST17-Makine",
-  "ST19-Makine",
-  "ST20-Makine",
-  "ST21-Makine",
-  "ST22-Makine",
-]);
+const iletkenBukumDiger: Machine[] = [
+  {
+    // DIKKAT: bu makine "ST1" degil "Device1" adiyla kayitli KEPServerEX'te.
+    id: "ST1-Makine",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=ST1-Makine.Device1.metre sayici_1" },
+      { label: "Cap", nodeId: "ns=2;s=ST1-Makine.Device1.topla mak cap gercek" },
+    ],
+  },
+  { id: "ST2-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST2-Makine.ST2.Metre" }] },
+  { id: "ST4-Makine", tags: [] }, // binlerce etiketsiz VD kaydi (VD0, VD1...) - harici dokumantasyon olmadan tag eslenemez
+  { id: "ST16-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST16-Makine.ST16.ST16_Metre" }] },
+  {
+    id: "ST17-Makine",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=ST17-Makine.ST17.METRE" },
+      { label: "HatHizi", nodeId: "ns=2;s=ST17-Makine.ST17.Drive_ReelSpeedFbk" },
+    ],
+  },
+  { id: "ST19-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST19-Makine.ST19.TOPLAM_METRE" }] },
+  { id: "ST20-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST20-Makine.ST20.ANLIK ÜRETİM METRESİ" }] },
+  { id: "ST21-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST21-Makine.ST21.ANLIK ÜRETİM METRESİ" }] },
+  { id: "ST22-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST22-Makine.ST22.ST22-Metre" }] },
+];
 // TREX'te var ama KEPServerEX'te kanali yok: BM01, BM02, BM03 (KEPServerEX'te sadece BM4-8 var,
 // TREX'teki BM01-08 numaralamasiyla birebir eslesmiyor - hangi fiziksel makinenin hangisi
 // oldugu teyit edilmeli), ST03, ST24
 
-const damarBukum = noTags(["ST5-Makine", "ST6-Makine", "ST7-Makine"]);
+const damarBukum: Machine[] = [
+  { id: "ST5-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST5-Makine.ST5.Metre" }] },
+  { id: "ST6-Makine", tags: [{ label: "Metre", nodeId: "ns=2;s=ST6-Makine.ST6.ST6-Metre" }] },
+  { id: "ST7-Makine", tags: [] }, // sadece kurulum/hesaplama parametreleri var, canli olcum tag'i bulunamadi
+];
 // TREX'te var ama KEPServerEX'te kanali yok: ST14
 
 // Su gruplarin TREX'te tanimli is istasyonlari var ama KEPServerEX'te hic kanali yok -
@@ -410,7 +526,18 @@ const damarBukum = noTags(["ST5-Makine", "ST6-Makine", "ST7-Makine"]);
 // - MAKARA URETIM: ARABA, Cakim
 // - PLANLAMA, CV (CV01-03 KEPServerEX'te var ama ayri ele alinacak - asagida)
 
-const cv = noTags(["CV01", "CV02", "CV03"]);
+const cv: Machine[] = [
+  {
+    id: "CV01",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=CV01.CV01.METRE" },
+      { label: "HatHizi", nodeId: "ns=2;s=CV01.CV01.DB_SAR_CAP_HSB.Sar1GercekKabloHizi" },
+      { label: "Cap", nodeId: "ns=2;s=CV01.CV01.DB_SAR_CAP_HSB.Sar1OrtalamaCap" },
+    ],
+  },
+  { id: "CV02", tags: [{ label: "Metre", nodeId: "ns=2;s=CV02.CV02.METRE" }] },
+  { id: "CV03", tags: [] }, // KEPServerEX'te bu kanalin altinda hic tag yok
+];
 // TREX'te var ama KEPServerEX'te kanali yok: CV04, CV05, YG
 
 export const groups: MachineGroup[] = [
