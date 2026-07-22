@@ -312,11 +312,63 @@ const dozaj: Machine[] = [
   },
 ];
 
+// Henuz hangi tag'in hangi degeri tuttugu teyit edilmemis kanallar icin -
+// makine KEPServerEX'te var, tag esleme (Cap/Metre gibi) sonraki asamada yapilacak.
+const noTags = (ids: string[]): Machine[] => ids.map((id) => ({ id, tags: [] }));
+
+// Is merkezi (WrkCtrId) -> Grup listesinden cikarilan yapi. KEPServerEX'teki
+// gercek kanal adlariyla karsilastirildi - bazi is merkezlerinin KEPServerEX'te
+// hic karsiligi yok (asagida grup yorumlarinda belirtildi), o yuzden gruba
+// eklenmediler.
+const zirhlama = noTags(["ST8-Makine", "ST10-Makine", "ST11-Makine", "ST12-Makine", "ST13-Makine", "ST15-Makine"]);
+// Eksik/KEPServerEX'te karsiligi olmayan is merkezleri: BRD16-1..4, BRD24-1/2, ST25, MT01, MT02, ST09
+
+const kangal = noTags(["CM1", "CM2", "CM3-Makine", "CM4"]);
+
+const aktarma = noTags(["AK1-Makine", "AK2-Makine"]);
+// AK03 KEPServerEX'te bulunamadi
+
+const telCekme = noTags([
+  "RB1-Makine",
+  "RB2-Makine",
+  "RB3-Makine",
+  "RB4-Makine",
+  "RB5-Makine",
+  "RB6-Makine",
+  "MW1-Makine",
+  "MW2-Makine",
+  "MW3-Codesys",
+  "MW4-Makine",
+]);
+// NR01 KEPServerEX'te bulunamadi. RB4-6/MW3-4 listede yoktu ama ayni onek oldugu icin eklendi - teyit edilmeli.
+
+const iletkenBukum = noTags(["BM4-Makine", "BM5-Makine", "BM6-Makine", "BM7-Makine", "BM8-Makine", "ST2-Makine", "ST4-Makine", "ST16-Makine"]);
+// DIKKAT: ERP'deki BM01-04 numaralari ile KEPServerEX'teki BM4-BM8 numaralari uyusmuyor.
+// Hangi fiziksel makinenin hangi KEPServerEX kanaligina karsilik geldigi teyit edilmeli. ST3 KEPServerEX'te yok.
+
+const damarBukum = noTags(["ST6-Makine", "ST7-Makine"]);
+// ST14 KEPServerEX'te bulunamadi
+
+const plastikhane = noTags(["GR1-Makine", "GR3-Makine"]);
+// GEX01/02/03 iş merkezi kodlari KEPServerEX'te yok - GR1/GR3 kanallarinin
+// bunlarin karsiligi olma ihtimali var (Plastikhane baglami uyusuyor) ama
+// TEYIT EDILMEDI, varsayim olarak isaretlendi.
+
 export const groups: MachineGroup[] = [
   { id: "ekstruder", label: "Ekstruder Hatti", machines: ekstruder },
   { id: "dozaj", label: "Dozaj", machines: dozaj },
-  // Yeni hat tipleri (Bobin/RB, Buküm/ST, BM, MW, GR, AK vb.) buraya
-  // ayni sekilde yeni bir grup olarak eklenecek.
+  { id: "zirhlama", label: "Zirhlama", machines: zirhlama },
+  { id: "kangal", label: "Kangal", machines: kangal },
+  { id: "aktarma", label: "Aktarma", machines: aktarma },
+  { id: "tel-cekme", label: "Tel Cekme", machines: telCekme },
+  { id: "iletken-bukum", label: "Iletken Bukum", machines: iletkenBukum },
+  { id: "damar-bukum", label: "Damar Bukum", machines: damarBukum },
+  { id: "plastikhane", label: "Plastikhane (teyit gerekiyor)", machines: plastikhane },
+  // Bu 3 is merkezi grubunun KEPServerEX'te hic karsiligi bulunamadi -
+  // henuz izlenmiyor, ileride baglanti kurulunca makineler eklenecek.
+  { id: "og-hatti", label: "OG Hatti", machines: [] },
+  { id: "yg-hatti", label: "YG Hatti", machines: [] },
+  { id: "makara-uretim", label: "Makara Uretim", machines: [] },
 ];
 
 // Toplama servisi (index.ts) icin duz liste.

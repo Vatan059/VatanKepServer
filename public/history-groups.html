@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>VatanKepServer - Gruplu Gecmis</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-2: #f3f2ef;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --gridline: #e1e0d9;
+    --baseline: #c3c2b7;
+    --series: #2a78d6;
+    --border: rgba(11,11,11,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --gridline: #2c2c2a;
+      --baseline: #383835;
+      --series: #3987e5;
+      --border: rgba(255,255,255,0.10);
+    }
+  }
+
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; padding: 24px; }
+  a { color: var(--series); }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  .controls { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .range-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .range-group button { font: inherit; padding: 6px 12px; border: none; background: var(--surface); color: var(--text-secondary); cursor: pointer; }
+  .range-group button.active { background: var(--series); color: #fff; }
+
+  details.group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
+  details.group > summary { cursor: pointer; padding: 12px 16px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s; }
+  details.group[open] > summary::before { transform: rotate(90deg); }
+  .group-count { color: var(--text-muted); font-weight: 400; font-size: 13px; }
+  .group-empty { padding: 0 16px 16px; color: var(--text-muted); font-size: 13px; }
+  .group-body { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  details.machine { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
+  details.machine > summary { cursor: pointer; padding: 8px 12px; font-size: 13px; font-weight: 500; list-style: none; }
+  details.machine > summary::-webkit-details-marker { display: none; }
+  .machine-body { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 12px; }
+
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; position: relative; }
+  .chart-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+  .chart-empty { color: var(--text-muted); font-size: 13px; }
+  svg { width: 100%; height: 130px; overflow: visible; display: block; }
+  .line { fill: none; stroke: var(--series); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .end-dot { fill: var(--series); stroke: var(--surface); stroke-width: 2; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--text-muted); font-size: 11px; }
+  .crosshair { stroke: var(--baseline); stroke-width: 1; }
+  .tooltip { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--text-primary); pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; }
+  .hover-layer { fill: transparent; }
+</style>
+</head>
+<body>
+  <a href="/">&larr; Canli tabloya don</a> &middot; <a href="/history.html">Tek makine gorunumu</a>
+  <h1>Gruplu Gecmis Trend</h1>
+  <div class="controls">
+    <div class="range-group" id="rangeGroup">
+      <button data-hours="1" class="active">Son 1 saat</button>
+      <button data-hours="6">Son 6 saat</button>
+      <button data-hours="24">Son 24 saat</button>
+      <button data-hours="0">Tumu</button>
+    </div>
+  </div>
+  <div id="groups"></div>
+
+<script src="/chart.js"></script>
+<script>
+let currentHours = 1;
+const loadedMachines = new Set();
+
+async function loadMachineCharts(machineId, tags, body) {
+  body.innerHTML = "";
+  if (tags.length === 0) {
+    body.innerHTML = '<div class="chart-empty">Tag tanimlanmadi.</div>';
+    return;
+  }
+  let any = false;
+  for (const tag of tags) {
+    const res = await fetch(`/api/history?machineId=${encodeURIComponent(machineId)}&tagLabel=${encodeURIComponent(tag)}&hours=${currentHours}`);
+    const points = await res.json();
+    if (points.length === 0) continue;
+    any = true;
+    renderTrendChart(body, `${machineId}.${tag}`, points);
+  }
+  if (!any) body.innerHTML = '<div class="chart-empty">Bu makine icin henuz veri yok.</div>';
+}
+
+function buildStructure(groupDefs) {
+  const container = document.getElementById("groups");
+  container.innerHTML = "";
+
+  for (const group of groupDefs) {
+    const details = document.createElement("details");
+    details.className = "group";
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `${group.label} <span class="group-count">(${group.machines.length} makine)</span>`;
+    details.appendChild(summary);
+
+    if (group.machines.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "group-empty";
+      empty.textContent = "Henuz makine eklenmedi.";
+      details.appendChild(empty);
+    } else {
+      const body = document.createElement("div");
+      body.className = "group-body";
+
+      for (const machine of group.machines) {
+        const mDetails = document.createElement("details");
+        mDetails.className = "machine";
+        const mSummary = document.createElement("summary");
+        mSummary.textContent = machine.id;
+        mDetails.appendChild(mSummary);
+
+        const mBody = document.createElement("div");
+        mBody.className = "machine-body";
+        mDetails.appendChild(mBody);
+
+        mDetails.addEventListener("toggle", () => {
+          if (mDetails.open && !loadedMachines.has(machine.id)) {
+            loadedMachines.add(machine.id);
+            loadMachineCharts(machine.id, machine.tags, mBody);
+          }
+        });
+
+        body.appendChild(mDetails);
+      }
+      details.appendChild(body);
+    }
+
+    container.appendChild(details);
+  }
+}
+
+async function init() {
+  const res = await fetch("/api/groups");
+  buildStructure(await res.json());
+}
+
+document.getElementById("rangeGroup").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  document.querySelectorAll("#rangeGroup button").forEach((b) => b.classList.remove("active"));
+  e.target.classList.add("active");
+  currentHours = Number(e.target.dataset.hours);
+
+  // Acik olan makine bolumlerini yeni zaman araligiyla yeniden yukle.
+  document.querySelectorAll("details.machine[open]").forEach((mDetails) => {
+    const machineId = mDetails.querySelector("summary").textContent;
+    loadedMachines.delete(machineId);
+    mDetails.dispatchEvent(new Event("toggle"));
+  });
+});
+
+init();
+</script>
+</body>
+</html>

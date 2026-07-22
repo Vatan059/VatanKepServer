@@ -51,16 +51,15 @@
 </head>
 <body>
   <h1>Vatan Kablo — Canli Izleme</h1>
+  <div style="margin-bottom: 8px;"><a href="/history-groups.html">Gruplu gecmis gorunumu &rarr;</a></div>
   <div id="status">Yukleniyor...</div>
   <div id="groups"></div>
 
 <script>
-let groupDefs = [];
-
-async function loadGroups() {
-  const res = await fetch("/api/groups");
-  groupDefs = await res.json();
-}
+// valueCells: "machineId::tagLabel" -> <span class="value"> elemani
+// rowsByMachine: machineId -> her tag-row <div> elemani (stale renklendirme icin)
+const valueCells = {};
+const rowsByMachine = {};
 
 function fmt(value) {
   if (value === null || value === undefined) return "-";
@@ -68,58 +67,84 @@ function fmt(value) {
   return Number.isFinite(n) ? n.toFixed(2) : String(value);
 }
 
+// DOM'u bir kere kurar. Sonraki refresh()'ler sadece deger/stale gunceller,
+// <details> acik/kapali durumuna hic dokunmaz (kullanicinin kapattigi grup
+// tekrar kendiliginden acilmasin diye).
+function buildStructure(groupDefs) {
+  const container = document.getElementById("groups");
+  container.innerHTML = "";
+
+  for (const group of groupDefs) {
+    const details = document.createElement("details");
+    details.className = "group";
+    details.open = group.machines.length > 0;
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `${group.label} <span class="group-count">(${group.machines.length} makine)</span>`;
+    details.appendChild(summary);
+
+    if (group.machines.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "group-empty";
+      empty.textContent = "Henuz makine eklenmedi.";
+      details.appendChild(empty);
+    } else {
+      const body = document.createElement("div");
+      body.className = "group-body";
+
+      for (const machine of group.machines) {
+        const card = document.createElement("div");
+        card.className = "machine-card";
+        card.innerHTML = `<h3>${machine.id} <a href="/history.html?machine=${encodeURIComponent(machine.id)}">Gecmis</a></h3>`;
+
+        if (machine.tags.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "group-empty";
+          empty.style.padding = "0";
+          empty.textContent = "Tag tanimlanmadi.";
+          card.appendChild(empty);
+        } else {
+          rowsByMachine[machine.id] = [];
+          for (const label of machine.tags) {
+            const row = document.createElement("div");
+            row.className = "tag-row";
+            row.innerHTML = `<span class="label">${label}</span><span class="value">-</span>`;
+            card.appendChild(row);
+            valueCells[`${machine.id}::${label}`] = row.querySelector(".value");
+            rowsByMachine[machine.id].push(row);
+          }
+        }
+        body.appendChild(card);
+      }
+      details.appendChild(body);
+    }
+
+    container.appendChild(details);
+  }
+}
+
+async function loadGroups() {
+  const res = await fetch("/api/groups");
+  buildStructure(await res.json());
+}
+
 async function refresh() {
   try {
     const res = await fetch("/api/latest");
     const rows = await res.json();
 
-    const byMachine = {};
+    const latestByMachine = {};
     for (const r of rows) {
-      byMachine[r.machine_id] ??= {};
-      byMachine[r.machine_id][r.tag_label] = { value: r.value, recorded_at: r.recorded_at };
+      const cell = valueCells[`${r.machine_id}::${r.tag_label}`];
+      if (cell) cell.textContent = fmt(r.value);
+      latestByMachine[r.machine_id] = Math.max(latestByMachine[r.machine_id] || 0, r.recorded_at);
     }
 
     const now = Date.now();
-    const container = document.getElementById("groups");
-    container.innerHTML = "";
-
-    for (const group of groupDefs) {
-      const details = document.createElement("details");
-      details.className = "group";
-      details.open = group.machines.length > 0;
-
-      const summary = document.createElement("summary");
-      summary.innerHTML = `${group.label} <span class="group-count">(${group.machines.length} makine)</span>`;
-      details.appendChild(summary);
-
-      if (group.machines.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "group-empty";
-        empty.textContent = "Henuz makine eklenmedi.";
-        details.appendChild(empty);
-      } else {
-        const body = document.createElement("div");
-        body.className = "group-body";
-
-        for (const machine of group.machines) {
-          const tags = byMachine[machine.id] || {};
-          const newest = Math.max(0, ...Object.values(tags).map((t) => t.recorded_at));
-          const staleClass = newest && now - newest > 5000 ? "stale" : "";
-
-          const card = document.createElement("div");
-          card.className = "machine-card";
-          const rows = machine.tags
-            .map(
-              (label) => `<div class="tag-row ${staleClass}"><span class="label">${label}</span><span class="value">${fmt(tags[label] ? tags[label].value : null)}</span></div>`
-            )
-            .join("");
-          card.innerHTML = `<h3>${machine.id} <a href="/history.html?machine=${encodeURIComponent(machine.id)}">Gecmis</a></h3>${rows}`;
-          body.appendChild(card);
-        }
-        details.appendChild(body);
-      }
-
-      container.appendChild(details);
+    for (const [machineId, rows2] of Object.entries(rowsByMachine)) {
+      const newest = latestByMachine[machineId];
+      const stale = newest && now - newest > 5000;
+      for (const row of rows2) row.classList.toggle("stale", !!stale);
     }
 
     document.getElementById("status").textContent = "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
