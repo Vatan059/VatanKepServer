@@ -36,8 +36,12 @@
   a:hover { text-decoration: underline; }
 
   header { position: sticky; top: 0; z-index: 10; background: var(--header-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+  header .brand { display: flex; align-items: center; gap: 10px; }
+  header .brand img { height: 30px; width: auto; display: block; }
   header h1 { font-size: 17px; margin: 0; }
   nav { display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
+
+  .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(55vw, 820px); opacity: 0.05; z-index: -1; pointer-events: none; user-select: none; }
   #status { color: var(--text-muted); font-size: 12px; }
   .filter-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
   .filter-toggle input { width: 16px; height: 16px; }
@@ -75,8 +79,12 @@
 </style>
 </head>
 <body>
+  <img class="watermark" src="/logo.png" alt="" />
   <header>
-    <h1>Vatan Kablo — Canli Izleme</h1>
+    <div class="brand">
+      <img src="/logo.png" alt="Vatan Kablo" />
+      <h1>Vatan Kablo — Canli Izleme</h1>
+    </div>
     <nav>
       <label class="filter-toggle"><input type="checkbox" id="onlyWithTags" checked /> Sadece tag tanimli olanlar</label>
       <a href="/history-groups.html">Gruplu gecmis</a>
