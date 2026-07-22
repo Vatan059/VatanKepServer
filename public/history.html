@@ -64,6 +64,12 @@
   .gridline { stroke: var(--gridline); stroke-width: 1; }
   .axis-label { fill: var(--text-muted); font-size: 11px; }
   .crosshair { stroke: var(--baseline); stroke-width: 1; }
+  .value-table { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); max-height: 180px; overflow-y: auto; font-size: 12px; }
+  .value-row { display: flex; justify-content: space-between; padding: 3px 2px; }
+  .value-row:nth-child(odd) { background: color-mix(in srgb, var(--surface) 92%, var(--text-primary) 8%); border-radius: 4px; }
+  .value-time { color: var(--text-muted); }
+  .value-num { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .value-table-note { color: var(--text-muted); font-size: 11px; padding: 4px 2px 0; }
   .tooltip { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--text-primary); pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; }
   .hover-layer { fill: transparent; }
 

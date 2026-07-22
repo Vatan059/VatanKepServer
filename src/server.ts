@@ -1,12 +1,13 @@
 import "dotenv/config";
 import express from "express";
 import path from "node:path";
-import { getLatestReadings, getHistory, getMachineIds } from "./db";
+import { getLatestReadings, getHistory, getMachineIds, getThresholds, setThreshold } from "./db";
 import { groups } from "./machines";
 
 const app = express();
 const PORT = process.env.DASHBOARD_PORT ? Number(process.env.DASHBOARD_PORT) : 3500;
 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.get("/api/latest", (_req, res) => {
@@ -39,6 +40,22 @@ app.get("/api/history", (req, res) => {
   }
   const sinceMs = hours > 0 ? Date.now() - hours * 3600_000 : 0;
   res.json(getHistory(machineId, tagLabel, sinceMs));
+});
+
+app.get("/api/thresholds", (_req, res) => {
+  res.json(getThresholds());
+});
+
+app.post("/api/thresholds", (req, res) => {
+  const { machineId, tagLabel, minValue, maxValue } = req.body ?? {};
+  if (!machineId || !tagLabel) {
+    res.status(400).json({ error: "machineId ve tagLabel gerekli" });
+    return;
+  }
+  const min = minValue === null || minValue === undefined || minValue === "" ? null : Number(minValue);
+  const max = maxValue === null || maxValue === undefined || maxValue === "" ? null : Number(maxValue);
+  setThreshold(machineId, tagLabel, min, max);
+  res.json({ ok: true });
 });
 
 app.listen(PORT, () => {

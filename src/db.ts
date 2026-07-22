@@ -28,6 +28,14 @@ db.exec(`
     recorded_at INTEGER NOT NULL,
     PRIMARY KEY (machine_id, tag_label)
   );
+
+  CREATE TABLE IF NOT EXISTS thresholds (
+    machine_id TEXT NOT NULL,
+    tag_label TEXT NOT NULL,
+    min_value REAL,
+    max_value REAL,
+    PRIMARY KEY (machine_id, tag_label)
+  );
 `);
 
 const insertReadingStmt = db.prepare(
@@ -66,4 +74,24 @@ export function getHistory(machineId: string, tagLabel: string, sinceMs = 0, lim
 const getMachineIdsStmt = db.prepare("SELECT DISTINCT machine_id FROM latest ORDER BY machine_id");
 export function getMachineIds(): string[] {
   return (getMachineIdsStmt.all() as { machine_id: string }[]).map((r) => r.machine_id);
+}
+
+export interface Threshold {
+  machine_id: string;
+  tag_label: string;
+  min_value: number | null;
+  max_value: number | null;
+}
+
+const getThresholdsStmt = db.prepare("SELECT machine_id, tag_label, min_value, max_value FROM thresholds");
+export function getThresholds(): Threshold[] {
+  return getThresholdsStmt.all() as unknown as Threshold[];
+}
+
+const upsertThresholdStmt = db.prepare(`
+  INSERT INTO thresholds (machine_id, tag_label, min_value, max_value) VALUES (?, ?, ?, ?)
+  ON CONFLICT(machine_id, tag_label) DO UPDATE SET min_value = excluded.min_value, max_value = excluded.max_value
+`);
+export function setThreshold(machineId: string, tagLabel: string, minValue: number | null, maxValue: number | null) {
+  upsertThresholdStmt.run(machineId, tagLabel, minValue, maxValue);
 }

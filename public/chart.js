@@ -107,5 +107,25 @@ function renderTrendChart(container, label, points) {
 
   card.appendChild(svg);
   card.appendChild(tooltip);
+
+  // Grafigin altinda okunan degerleri tarih-saat ile listeleyen tablo (en yeni ustte).
+  const table = document.createElement("div");
+  table.className = "value-table";
+  const MAX_ROWS = 500;
+  const reversed = valid.slice().reverse().slice(0, MAX_ROWS);
+  table.innerHTML = reversed
+    .map(
+      (p) =>
+        `<div class="value-row"><span class="value-time">${new Date(p.recorded_at).toLocaleString("tr-TR")}</span><span class="value-num">${p.value.toFixed(2)}</span></div>`
+    )
+    .join("");
+  if (valid.length > MAX_ROWS) {
+    const note = document.createElement("div");
+    note.className = "value-table-note";
+    note.textContent = `Son ${MAX_ROWS} kayit gosteriliyor (toplam ${valid.length}).`;
+    table.appendChild(note);
+  }
+  card.appendChild(table);
+
   container.appendChild(card);
 }

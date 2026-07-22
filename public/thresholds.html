@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>VatanKepServer - Min/Max Tanimlari</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-2: #f3f2ef;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --border: rgba(11,11,11,0.10);
+    --series: #2a78d6;
+    --good: #0ca30c;
+    --header-bg: rgba(252,252,251,0.85);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --border: rgba(255,255,255,0.10);
+      --series: #3987e5;
+      --good: #0ca30c;
+      --header-bg: rgba(26,26,25,0.85);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; -webkit-tap-highlight-color: transparent; }
+  a { color: var(--series); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { position: sticky; top: 0; z-index: 10; background: var(--header-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+  header .brand { display: flex; align-items: center; gap: 10px; }
+  header .brand img { height: 30px; width: auto; display: block; }
+  header h1 { font-size: 17px; margin: 0; }
+  nav { display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
+
+  .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(55vw, 820px); opacity: 0.05; z-index: -1; pointer-events: none; user-select: none; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 16px 24px 40px; }
+  .hint { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; }
+
+  details.group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
+  details.group summary { cursor: pointer; padding: 14px 16px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
+  details.group summary::-webkit-details-marker { display: none; }
+  details.group summary::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s; }
+  details.group[open] summary::before { transform: rotate(90deg); }
+  .group-count { color: var(--text-muted); font-weight: 400; font-size: 13px; }
+  .group-empty { padding: 0 16px 16px; color: var(--text-muted); font-size: 13px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  th { color: var(--text-muted); font-weight: 500; text-transform: uppercase; font-size: 11px; }
+  td.tag-cell { color: var(--text-secondary); }
+  input.threshold-input { font: inherit; width: 100px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary); }
+  .save-state { font-size: 12px; color: var(--text-muted); min-width: 70px; display: inline-block; }
+  .save-state.ok { color: var(--good); }
+
+  @media (max-width: 480px) {
+    header { padding: 10px 14px; }
+    header h1 { font-size: 15px; width: 100%; }
+    main { padding: 12px 12px 32px; }
+    th, td { padding: 8px; }
+    input.threshold-input { width: 70px; }
+  }
+</style>
+</head>
+<body>
+  <img class="watermark" src="/logo.png" alt="" />
+  <header>
+    <div class="brand">
+      <img src="/logo.png" alt="Vatan Kablo" />
+      <h1>Min / Max Tanimlari</h1>
+    </div>
+    <nav>
+      <a href="/">Canli tablo</a>
+      <a href="/history-groups.html">Gruplu gecmis</a>
+    </nav>
+  </header>
+  <main>
+    <div class="hint">
+      Bir tag icin Min ve/veya Max degeri girin, alan disina tiklayinca otomatik kaydedilir.
+      Bos birakilan alan "sinir yok" anlamina gelir. Kaydedilen sinirlarin disina cikan degerler
+      canli tabloda kirmizi renkle vurgulanir.
+    </div>
+    <div id="groups"></div>
+  </main>
+
+<script>
+async function save(machineId, tagLabel, minValue, maxValue, stateEl) {
+  stateEl.textContent = "Kaydediliyor...";
+  stateEl.classList.remove("ok");
+  try {
+    const res = await fetch("/api/thresholds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ machineId, tagLabel, minValue, maxValue }),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    stateEl.textContent = "Kaydedildi";
+    stateEl.classList.add("ok");
+  } catch (err) {
+    stateEl.textContent = "Hata: " + err;
+  }
+}
+
+async function init() {
+  const [groupsRes, thresholdsRes] = await Promise.all([fetch("/api/groups"), fetch("/api/thresholds")]);
+  const groupDefs = await groupsRes.json();
+  const thresholds = await thresholdsRes.json();
+
+  const thresholdByKey = {};
+  for (const t of thresholds) thresholdByKey[`${t.machine_id}::${t.tag_label}`] = t;
+
+  const container = document.getElementById("groups");
+  container.innerHTML = "";
+
+  for (const group of groupDefs) {
+    const totalTags = group.machines.reduce((sum, m) => sum + m.tags.length, 0);
+    if (totalTags === 0) continue; // tag'i olmayan gruplari gosterme, tanimlanacak bir sey yok
+
+    const details = document.createElement("details");
+    details.className = "group";
+    const summary = document.createElement("summary");
+    summary.innerHTML = `${group.label} <span class="group-count">(${totalTags} tag)</span>`;
+    details.appendChild(summary);
+
+    const table = document.createElement("table");
+    table.innerHTML = `<thead><tr><th>Makine</th><th>Tag</th><th>Min</th><th>Max</th><th></th></tr></thead>`;
+    const tbody = document.createElement("tbody");
+
+    for (const machine of group.machines) {
+      for (const tagLabel of machine.tags) {
+        const key = `${machine.id}::${tagLabel}`;
+        const existing = thresholdByKey[key] || {};
+
+        const tr = document.createElement("tr");
+        const minInput = document.createElement("input");
+        minInput.type = "number";
+        minInput.step = "any";
+        minInput.className = "threshold-input";
+        minInput.placeholder = "-";
+        if (existing.min_value !== null && existing.min_value !== undefined) minInput.value = existing.min_value;
+
+        const maxInput = document.createElement("input");
+        maxInput.type = "number";
+        maxInput.step = "any";
+        maxInput.className = "threshold-input";
+        maxInput.placeholder = "-";
+        if (existing.max_value !== null && existing.max_value !== undefined) maxInput.value = existing.max_value;
+
+        const stateSpan = document.createElement("span");
+        stateSpan.className = "save-state";
+
+        const onChange = () => save(machine.id, tagLabel, minInput.value, maxInput.value, stateSpan);
+        minInput.addEventListener("change", onChange);
+        maxInput.addEventListener("change", onChange);
+
+        const tdMachine = document.createElement("td");
+        tdMachine.textContent = machine.id;
+        const tdTag = document.createElement("td");
+        tdTag.className = "tag-cell";
+        tdTag.textContent = tagLabel;
+        const tdMin = document.createElement("td");
+        tdMin.appendChild(minInput);
+        const tdMax = document.createElement("td");
+        tdMax.appendChild(maxInput);
+        const tdState = document.createElement("td");
+        tdState.appendChild(stateSpan);
+
+        tr.append(tdMachine, tdTag, tdMin, tdMax, tdState);
+        tbody.appendChild(tr);
+      }
+    }
+
+    table.appendChild(tbody);
+    details.appendChild(table);
+    container.appendChild(details);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

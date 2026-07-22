@@ -68,6 +68,8 @@
   .tag-row .value { font-variant-numeric: tabular-nums; font-weight: 500; }
   .stale { color: var(--text-muted); }
   .stale .value { font-weight: 400; }
+  .tag-row.alert .value { color: #d03b3b; font-weight: 700; }
+  .tag-row.alert .value::after { content: " ⚠"; }
 
   @media (max-width: 480px) {
     header { padding: 10px 14px; }
@@ -89,6 +91,7 @@
       <label class="filter-toggle"><input type="checkbox" id="onlyWithTags" checked /> Sadece tag tanimli olanlar</label>
       <a href="/history-groups.html">Gruplu gecmis</a>
       <a href="/history.html">Tek makine gecmisi</a>
+      <a href="/thresholds.html">Min/Max tanimlari</a>
       <span id="status">Yukleniyor...</span>
     </nav>
   </header>
@@ -105,6 +108,7 @@ const rowsByMachine = {};
 const cardByMachine = {};
 const groupInfo = {}; // groupId -> { countSpan, totalCount, machineIds: [] }
 const hasTagsState = {}; // machineId -> bool (tag tanimli mi - statik, canli veriye bagli degil)
+const thresholdByKey = {}; // "machineId::tagLabel" -> { min_value, max_value }
 
 // Tag tipine (Cap, Metre, HatHizi, Boya1...) gore sabit, tekrar eden bir renk -
 // makine/grup ne olursa olsun ayni tag tipi hep ayni renkte gorunur. Kart
@@ -218,6 +222,12 @@ async function loadGroups() {
   buildStructure(await res.json());
 }
 
+async function loadThresholds() {
+  const res = await fetch("/api/thresholds");
+  const rows = await res.json();
+  for (const t of rows) thresholdByKey[`${t.machine_id}::${t.tag_label}`] = t;
+}
+
 async function refresh() {
   try {
     const res = await fetch("/api/latest");
@@ -225,8 +235,16 @@ async function refresh() {
 
     const latestByMachine = {};
     for (const r of rows) {
-      const cell = valueCells[`${r.machine_id}::${r.tag_label}`];
-      if (cell) cell.textContent = fmt(r.value);
+      const key = `${r.machine_id}::${r.tag_label}`;
+      const cell = valueCells[key];
+      if (cell) {
+        cell.textContent = fmt(r.value);
+        const t = thresholdByKey[key];
+        const n = Number(r.value);
+        const outOfRange =
+          t && Number.isFinite(n) && ((t.min_value !== null && n < t.min_value) || (t.max_value !== null && n > t.max_value));
+        cell.closest(".tag-row").classList.toggle("alert", !!outOfRange);
+      }
       latestByMachine[r.machine_id] = Math.max(latestByMachine[r.machine_id] || 0, r.recorded_at);
     }
 
@@ -245,10 +263,11 @@ async function refresh() {
 
 document.getElementById("onlyWithTags").addEventListener("change", applyFilter);
 
-loadGroups().then(() => {
+Promise.all([loadGroups(), loadThresholds()]).then(() => {
   applyFilter();
   refresh();
   setInterval(refresh, 2000);
+  setInterval(loadThresholds, 30000); // baska bir sekmede degistirilmis olabilir
 });
 </script>
 </body>
