@@ -94,7 +94,7 @@
   <header>
     <h1>Gruplu Gecmis Trend</h1>
     <nav>
-      <label class="filter-toggle"><input type="checkbox" id="onlyWorking" checked /> Sadece veri gelenler</label>
+      <label class="filter-toggle"><input type="checkbox" id="onlyWithTags" checked /> Sadece tag tanimli olanlar</label>
       <a href="/">Canli tablo</a>
       <a href="/history.html">Tek makine gecmisi</a>
     </nav>
@@ -115,7 +115,7 @@
 <script>
 let currentHours = 1;
 const loadedMachines = new Set();
-const workingState = {}; // machineId -> bool (tag var + verisi 5sn'den taze)
+const hasTagsState = {}; // machineId -> bool (tag tanimli mi - statik)
 const groupInfo = {}; // groupId -> { details, countSpan, totalCount, machineIds: [] }
 const machineDetailsById = {};
 
@@ -136,27 +136,28 @@ async function loadMachineCharts(machineId, tags, body) {
   if (!any) body.innerHTML = '<div class="chart-empty">Bu makine icin henuz veri yok.</div>';
 }
 
-// Filtre acikken sadece calisan makineleri gosterir ve onlari otomatik acar
-// (liste kucukse hepsini tek tek tiklamaya gerek kalmasin diye).
+// Filtre acikken sadece tag'i tanimli makineleri gosterir ve onlari otomatik acar
+// (liste kucukse hepsini tek tek tiklamaya gerek kalmasin diye). Statik bir
+// kritere gore calisir - canli veri tazeligine BAKMAZ (flicker olmasin diye).
 function applyFilter() {
-  const onlyWorking = document.getElementById("onlyWorking").checked;
+  const onlyWithTags = document.getElementById("onlyWithTags").checked;
 
   for (const info of Object.values(groupInfo)) {
     let visibleCount = 0;
     for (const machineId of info.machineIds) {
       const mDetails = machineDetailsById[machineId];
-      const working = !!workingState[machineId];
-      const hide = onlyWorking && !working;
+      const hasTags = !!hasTagsState[machineId];
+      const hide = onlyWithTags && !hasTags;
       mDetails.classList.toggle("hidden-by-filter", hide);
       if (!hide) visibleCount++;
 
-      if (onlyWorking && working && !mDetails.open) {
+      if (onlyWithTags && hasTags && !mDetails.open) {
         mDetails.open = true;
         mDetails.dispatchEvent(new Event("toggle"));
       }
     }
-    info.countSpan.textContent = onlyWorking ? `(${visibleCount}/${info.totalCount} calisiyor)` : `(${info.totalCount} makine)`;
-    info.details.classList.toggle("hidden-by-filter", onlyWorking && info.totalCount > 0 && visibleCount === 0);
+    info.countSpan.textContent = onlyWithTags ? `(${visibleCount}/${info.totalCount} tag tanimli)` : `(${info.totalCount} makine)`;
+    info.details.classList.toggle("hidden-by-filter", onlyWithTags && info.totalCount > 0 && visibleCount === 0);
   }
 }
 
@@ -192,6 +193,7 @@ function buildStructure(groupDefs) {
         const mDetails = document.createElement("details");
         mDetails.className = "machine";
         machineDetailsById[machine.id] = mDetails;
+        hasTagsState[machine.id] = machine.tags.length > 0;
         const mSummary = document.createElement("summary");
         mSummary.textContent = machine.id;
         mDetails.appendChild(mSummary);
@@ -217,27 +219,12 @@ function buildStructure(groupDefs) {
 }
 
 async function init() {
-  const [groupsRes, latestRes] = await Promise.all([fetch("/api/groups"), fetch("/api/latest")]);
-  const groupDefs = await groupsRes.json();
-  const latestRows = await latestRes.json();
-
-  const newestByMachine = {};
-  for (const r of latestRows) {
-    newestByMachine[r.machine_id] = Math.max(newestByMachine[r.machine_id] || 0, r.recorded_at);
-  }
-  const now = Date.now();
-  for (const group of groupDefs) {
-    for (const machine of group.machines) {
-      const newest = newestByMachine[machine.id];
-      workingState[machine.id] = machine.tags.length > 0 && !!newest && now - newest <= 5000;
-    }
-  }
-
-  buildStructure(groupDefs);
+  const res = await fetch("/api/groups");
+  buildStructure(await res.json());
   applyFilter();
 }
 
-document.getElementById("onlyWorking").addEventListener("change", applyFilter);
+document.getElementById("onlyWithTags").addEventListener("change", applyFilter);
 
 document.getElementById("rangeGroup").addEventListener("click", (e) => {
   if (e.target.tagName !== "BUTTON") return;

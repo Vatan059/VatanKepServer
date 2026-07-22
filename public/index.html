@@ -76,7 +76,7 @@
   <header>
     <h1>Vatan Kablo — Canli Izleme</h1>
     <nav>
-      <label class="filter-toggle"><input type="checkbox" id="onlyWorking" checked /> Sadece veri gelenler</label>
+      <label class="filter-toggle"><input type="checkbox" id="onlyWithTags" checked /> Sadece tag tanimli olanlar</label>
       <a href="/history-groups.html">Gruplu gecmis</a>
       <a href="/history.html">Tek makine gecmisi</a>
       <span id="status">Yukleniyor...</span>
@@ -94,7 +94,7 @@ const valueCells = {};
 const rowsByMachine = {};
 const cardByMachine = {};
 const groupInfo = {}; // groupId -> { countSpan, totalCount, machineIds: [] }
-const workingState = {}; // machineId -> bool (tag var + taze veri var)
+const hasTagsState = {}; // machineId -> bool (tag tanimli mi - statik, canli veriye bagli degil)
 
 function fmt(value) {
   if (value === null || value === undefined) return "-";
@@ -138,7 +138,7 @@ function buildStructure(groupDefs) {
         card.className = "machine-card";
         card.innerHTML = `<h3>${machine.id} <a href="/history.html?machine=${encodeURIComponent(machine.id)}">Gecmis</a></h3>`;
         cardByMachine[machine.id] = card;
-        workingState[machine.id] = false;
+        hasTagsState[machine.id] = machine.tags.length > 0;
 
         if (machine.tags.length === 0) {
           const empty = document.createElement("div");
@@ -166,23 +166,24 @@ function buildStructure(groupDefs) {
   }
 }
 
-// "Sadece veri gelenler" filtresi: tag'i olmayan veya verisi 5sn'den eski
-// makineleri (ve tumu filtrelenmis gruplari) gizler.
+// "Sadece tag tanimli olanlar" filtresi: statik bir kritere gore (machines.ts'te
+// tag tanimlanmis mi) calisir - canli veri tazeligine BAKMAZ, boylece ara ara
+// veri gelen makineler filtre acikken yanip sonmez (flicker etmez).
 function applyFilter() {
-  const onlyWorking = document.getElementById("onlyWorking").checked;
+  const onlyWithTags = document.getElementById("onlyWithTags").checked;
 
   for (const [groupId, info] of Object.entries(groupInfo)) {
     let visibleCount = 0;
     for (const machineId of info.machineIds) {
       const card = cardByMachine[machineId];
-      const hide = onlyWorking && !workingState[machineId];
+      const hide = onlyWithTags && !hasTagsState[machineId];
       card.classList.toggle("hidden-by-filter", hide);
       if (!hide) visibleCount++;
     }
-    info.countSpan.textContent = onlyWorking
-      ? `(${visibleCount}/${info.totalCount} calisiyor)`
+    info.countSpan.textContent = onlyWithTags
+      ? `(${visibleCount}/${info.totalCount} tag tanimli)`
       : `(${info.totalCount} makine)`;
-    info.details.classList.toggle("hidden-by-filter", onlyWorking && info.totalCount > 0 && visibleCount === 0);
+    info.details.classList.toggle("hidden-by-filter", onlyWithTags && info.totalCount > 0 && visibleCount === 0);
   }
 }
 
@@ -208,19 +209,18 @@ async function refresh() {
       const newest = latestByMachine[machineId];
       const stale = newest && now - newest > 5000;
       for (const row of rows2) row.classList.toggle("stale", !!stale);
-      workingState[machineId] = !!newest && !stale;
     }
 
-    applyFilter();
     document.getElementById("status").textContent = "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
   } catch (err) {
     document.getElementById("status").textContent = "Baglanti hatasi: " + err;
   }
 }
 
-document.getElementById("onlyWorking").addEventListener("change", applyFilter);
+document.getElementById("onlyWithTags").addEventListener("change", applyFilter);
 
 loadGroups().then(() => {
+  applyFilter();
   refresh();
   setInterval(refresh, 2000);
 });
