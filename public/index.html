@@ -39,6 +39,9 @@
   header h1 { font-size: 17px; margin: 0; }
   nav { display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
   #status { color: var(--text-muted); font-size: 12px; }
+  .filter-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .filter-toggle input { width: 16px; height: 16px; }
+  .hidden-by-filter { display: none !important; }
 
   main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; }
 
@@ -73,6 +76,7 @@
   <header>
     <h1>Vatan Kablo — Canli Izleme</h1>
     <nav>
+      <label class="filter-toggle"><input type="checkbox" id="onlyWorking" checked /> Sadece veri gelenler</label>
       <a href="/history-groups.html">Gruplu gecmis</a>
       <a href="/history.html">Tek makine gecmisi</a>
       <span id="status">Yukleniyor...</span>
@@ -85,8 +89,12 @@
 <script>
 // valueCells: "machineId::tagLabel" -> <span class="value"> elemani
 // rowsByMachine: machineId -> her tag-row <div> elemani (stale renklendirme icin)
+// cardByMachine / groupInfo: filtreleme (calisiyor/calismiyor) icin DOM referanslari
 const valueCells = {};
 const rowsByMachine = {};
+const cardByMachine = {};
+const groupInfo = {}; // groupId -> { countSpan, totalCount, machineIds: [] }
+const workingState = {}; // machineId -> bool (tag var + taze veri var)
 
 function fmt(value) {
   if (value === null || value === undefined) return "-";
@@ -107,8 +115,14 @@ function buildStructure(groupDefs) {
     details.open = group.machines.length > 0;
 
     const summary = document.createElement("summary");
-    summary.innerHTML = `${group.label} <span class="group-count">(${group.machines.length} makine)</span>`;
+    const countSpan = document.createElement("span");
+    countSpan.className = "group-count";
+    countSpan.textContent = `(${group.machines.length} makine)`;
+    summary.textContent = group.label + " ";
+    summary.appendChild(countSpan);
     details.appendChild(summary);
+
+    groupInfo[group.id] = { details, countSpan, totalCount: group.machines.length, machineIds: group.machines.map((m) => m.id) };
 
     if (group.machines.length === 0) {
       const empty = document.createElement("div");
@@ -123,6 +137,8 @@ function buildStructure(groupDefs) {
         const card = document.createElement("div");
         card.className = "machine-card";
         card.innerHTML = `<h3>${machine.id} <a href="/history.html?machine=${encodeURIComponent(machine.id)}">Gecmis</a></h3>`;
+        cardByMachine[machine.id] = card;
+        workingState[machine.id] = false;
 
         if (machine.tags.length === 0) {
           const empty = document.createElement("div");
@@ -150,6 +166,26 @@ function buildStructure(groupDefs) {
   }
 }
 
+// "Sadece veri gelenler" filtresi: tag'i olmayan veya verisi 5sn'den eski
+// makineleri (ve tumu filtrelenmis gruplari) gizler.
+function applyFilter() {
+  const onlyWorking = document.getElementById("onlyWorking").checked;
+
+  for (const [groupId, info] of Object.entries(groupInfo)) {
+    let visibleCount = 0;
+    for (const machineId of info.machineIds) {
+      const card = cardByMachine[machineId];
+      const hide = onlyWorking && !workingState[machineId];
+      card.classList.toggle("hidden-by-filter", hide);
+      if (!hide) visibleCount++;
+    }
+    info.countSpan.textContent = onlyWorking
+      ? `(${visibleCount}/${info.totalCount} calisiyor)`
+      : `(${info.totalCount} makine)`;
+    info.details.classList.toggle("hidden-by-filter", onlyWorking && info.totalCount > 0 && visibleCount === 0);
+  }
+}
+
 async function loadGroups() {
   const res = await fetch("/api/groups");
   buildStructure(await res.json());
@@ -172,13 +208,17 @@ async function refresh() {
       const newest = latestByMachine[machineId];
       const stale = newest && now - newest > 5000;
       for (const row of rows2) row.classList.toggle("stale", !!stale);
+      workingState[machineId] = !!newest && !stale;
     }
 
+    applyFilter();
     document.getElementById("status").textContent = "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
   } catch (err) {
     document.getElementById("status").textContent = "Baglanti hatasi: " + err;
   }
 }
+
+document.getElementById("onlyWorking").addEventListener("change", applyFilter);
 
 loadGroups().then(() => {
   refresh();
