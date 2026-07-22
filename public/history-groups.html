@@ -48,7 +48,7 @@
   .filter-toggle input { width: 16px; height: 16px; }
   .hidden-by-filter { display: none !important; }
 
-  main { max-width: 900px; margin: 0 auto; padding: 16px 20px 40px; }
+  main { max-width: 1800px; margin: 0 auto; padding: 16px 24px 40px; }
 
   .controls { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
   .range-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
@@ -67,7 +67,7 @@
   details.machine { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
   details.machine > summary { cursor: pointer; padding: 10px 12px; min-height: 20px; font-size: 13px; font-weight: 500; list-style: none; user-select: none; }
   details.machine > summary::-webkit-details-marker { display: none; }
-  .machine-body { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 12px; }
+  .machine-body { padding: 4px 12px 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 12px; align-items: start; }
 
   .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; position: relative; }
   .chart-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }

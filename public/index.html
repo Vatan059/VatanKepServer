@@ -43,7 +43,7 @@
   .filter-toggle input { width: 16px; height: 16px; }
   .hidden-by-filter { display: none !important; }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; }
+  main { max-width: 2200px; margin: 0 auto; padding: 16px 24px 40px; }
 
   details.group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
   details.group summary { cursor: pointer; padding: 14px 16px; min-height: 24px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
@@ -58,7 +58,9 @@
   .machine-card h3 { margin: 0 0 6px; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; }
   .machine-card h3 a { font-size: 12px; font-weight: 400; }
   .tag-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
-  .tag-row .label { color: var(--text-secondary); }
+  .tag-row .label { color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+  .tag-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .stale .tag-dot { opacity: 0.35; }
   .tag-row .value { font-variant-numeric: tabular-nums; font-weight: 500; }
   .stale { color: var(--text-muted); }
   .stale .value { font-weight: 400; }
@@ -95,6 +97,22 @@ const rowsByMachine = {};
 const cardByMachine = {};
 const groupInfo = {}; // groupId -> { countSpan, totalCount, machineIds: [] }
 const hasTagsState = {}; // machineId -> bool (tag tanimli mi - statik, canli veriye bagli degil)
+
+// Tag tipine (Cap, Metre, HatHizi, Boya1...) gore sabit, tekrar eden bir renk -
+// makine/grup ne olursa olsun ayni tag tipi hep ayni renkte gorunur. Kart
+// tamamen boyanmiyor, sadece etiketin yanindaki kucuk nokta renkleniyor.
+const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+const TAG_PALETTE = isDark
+  ? ["#3987e5", "#199e70", "#c98500", "#008300", "#9085e9", "#e66767", "#d55181", "#d95926"]
+  : ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e34948", "#e87ba4", "#eb6834"];
+const tagColorByLabel = {};
+function colorForTag(label) {
+  if (!tagColorByLabel[label]) {
+    const idx = Object.keys(tagColorByLabel).length % TAG_PALETTE.length;
+    tagColorByLabel[label] = TAG_PALETTE[idx];
+  }
+  return tagColorByLabel[label];
+}
 
 function fmt(value) {
   if (value === null || value === undefined) return "-";
@@ -151,7 +169,7 @@ function buildStructure(groupDefs) {
           for (const label of machine.tags) {
             const row = document.createElement("div");
             row.className = "tag-row";
-            row.innerHTML = `<span class="label">${label}</span><span class="value">-</span>`;
+            row.innerHTML = `<span class="label"><span class="tag-dot" style="background:${colorForTag(label)}"></span>${label}</span><span class="value">-</span>`;
             card.appendChild(row);
             valueCells[`${machine.id}::${label}`] = row.querySelector(".value");
             rowsByMachine[machine.id].push(row);
