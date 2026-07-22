@@ -2,7 +2,8 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<title>VatanKepServer - Ekstruder Izleme</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>VatanKepServer - Canli Izleme</title>
 <style>
   :root {
     color-scheme: light;
@@ -13,6 +14,7 @@
     --text-muted: #898781;
     --border: rgba(11,11,11,0.10);
     --series: #2a78d6;
+    --header-bg: rgba(252,252,251,0.85);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -24,36 +26,61 @@
       --text-muted: #898781;
       --border: rgba(255,255,255,0.10);
       --series: #3987e5;
+      --header-bg: rgba(26,26,25,0.85);
     }
   }
-  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; padding: 24px; }
-  a { color: var(--series); }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  #status { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
 
-  details.group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; }
-  details.group summary { cursor: pointer; padding: 12px 16px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; -webkit-tap-highlight-color: transparent; }
+  a { color: var(--series); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { position: sticky; top: 0; z-index: 10; background: var(--header-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+  header h1 { font-size: 17px; margin: 0; }
+  nav { display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
+  #status { color: var(--text-muted); font-size: 12px; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; }
+
+  details.group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
+  details.group summary { cursor: pointer; padding: 14px 16px; min-height: 24px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
   details.group summary::-webkit-details-marker { display: none; }
-  details.group summary::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s; }
+  details.group summary::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s; display: inline-block; }
   details.group[open] summary::before { transform: rotate(90deg); }
   .group-count { color: var(--text-muted); font-weight: 400; font-size: 13px; }
-  .group-body { padding: 4px 16px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .group-body { padding: 4px 14px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
   .group-empty { padding: 0 16px 16px; color: var(--text-muted); font-size: 13px; }
 
-  .machine-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .machine-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: color-mix(in srgb, var(--surface) 96%, var(--text-primary) 4%); }
   .machine-card h3 { margin: 0 0 6px; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; }
   .machine-card h3 a { font-size: 12px; font-weight: 400; }
-  .tag-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+  .tag-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
   .tag-row .label { color: var(--text-secondary); }
-  .tag-row .value { font-variant-numeric: tabular-nums; }
+  .tag-row .value { font-variant-numeric: tabular-nums; font-weight: 500; }
   .stale { color: var(--text-muted); }
+  .stale .value { font-weight: 400; }
+
+  @media (max-width: 480px) {
+    header { padding: 10px 14px; }
+    header h1 { font-size: 15px; width: 100%; }
+    main { padding: 12px 12px 32px; }
+    .group-body { grid-template-columns: 1fr; padding: 4px 10px 12px; }
+    details.group summary { padding: 14px; font-size: 14px; }
+  }
 </style>
 </head>
 <body>
-  <h1>Vatan Kablo — Canli Izleme</h1>
-  <div style="margin-bottom: 8px;"><a href="/history-groups.html">Gruplu gecmis gorunumu &rarr;</a></div>
-  <div id="status">Yukleniyor...</div>
-  <div id="groups"></div>
+  <header>
+    <h1>Vatan Kablo — Canli Izleme</h1>
+    <nav>
+      <a href="/history-groups.html">Gruplu gecmis</a>
+      <a href="/history.html">Tek makine gecmisi</a>
+      <span id="status">Yukleniyor...</span>
+    </nav>
+  </header>
+  <main>
+    <div id="groups"></div>
+  </main>
 
 <script>
 // valueCells: "machineId::tagLabel" -> <span class="value"> elemani

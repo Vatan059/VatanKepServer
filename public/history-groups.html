@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>VatanKepServer - Gruplu Gecmis</title>
 <style>
   :root {
@@ -16,6 +17,7 @@
     --baseline: #c3c2b7;
     --series: #2a78d6;
     --border: rgba(11,11,11,0.10);
+    --header-bg: rgba(252,252,251,0.85);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -30,19 +32,28 @@
       --baseline: #383835;
       --series: #3987e5;
       --border: rgba(255,255,255,0.10);
+      --header-bg: rgba(26,26,25,0.85);
     }
   }
 
-  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; padding: 24px; }
-  a { color: var(--series); }
-  h1 { font-size: 20px; margin: 0 0 16px; }
-  .controls { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; -webkit-tap-highlight-color: transparent; }
+  a { color: var(--series); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { position: sticky; top: 0; z-index: 10; background: var(--header-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+  header h1 { font-size: 17px; margin: 0; }
+  nav { display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 16px 20px 40px; }
+
+  .controls { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
   .range-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-  .range-group button { font: inherit; padding: 6px 12px; border: none; background: var(--surface); color: var(--text-secondary); cursor: pointer; }
+  .range-group button { font: inherit; padding: 8px 12px; min-height: 40px; border: none; background: var(--surface); color: var(--text-secondary); cursor: pointer; }
   .range-group button.active { background: var(--series); color: #fff; }
 
   details.group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
-  details.group > summary { cursor: pointer; padding: 12px 16px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+  details.group > summary { cursor: pointer; padding: 14px 16px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
   details.group > summary::-webkit-details-marker { display: none; }
   details.group > summary::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s; }
   details.group[open] > summary::before { transform: rotate(90deg); }
@@ -51,7 +62,7 @@
   .group-body { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px; }
 
   details.machine { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
-  details.machine > summary { cursor: pointer; padding: 8px 12px; font-size: 13px; font-weight: 500; list-style: none; }
+  details.machine > summary { cursor: pointer; padding: 10px 12px; min-height: 20px; font-size: 13px; font-weight: 500; list-style: none; user-select: none; }
   details.machine > summary::-webkit-details-marker { display: none; }
   .machine-body { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 12px; }
 
@@ -66,20 +77,35 @@
   .crosshair { stroke: var(--baseline); stroke-width: 1; }
   .tooltip { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--text-primary); pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; }
   .hover-layer { fill: transparent; }
+
+  @media (max-width: 480px) {
+    header { padding: 10px 14px; }
+    header h1 { font-size: 15px; width: 100%; }
+    main { padding: 12px 12px 32px; }
+    .range-group { flex: 1 1 100%; }
+    .range-group button { flex: 1; padding: 8px 6px; font-size: 12px; }
+  }
 </style>
 </head>
 <body>
-  <a href="/">&larr; Canli tabloya don</a> &middot; <a href="/history.html">Tek makine gorunumu</a>
-  <h1>Gruplu Gecmis Trend</h1>
-  <div class="controls">
-    <div class="range-group" id="rangeGroup">
-      <button data-hours="1" class="active">Son 1 saat</button>
-      <button data-hours="6">Son 6 saat</button>
-      <button data-hours="24">Son 24 saat</button>
-      <button data-hours="0">Tumu</button>
+  <header>
+    <h1>Gruplu Gecmis Trend</h1>
+    <nav>
+      <a href="/">Canli tablo</a>
+      <a href="/history.html">Tek makine gecmisi</a>
+    </nav>
+  </header>
+  <main>
+    <div class="controls">
+      <div class="range-group" id="rangeGroup">
+        <button data-hours="1" class="active">Son 1 saat</button>
+        <button data-hours="6">Son 6 saat</button>
+        <button data-hours="24">Son 24 saat</button>
+        <button data-hours="0">Tumu</button>
+      </div>
     </div>
-  </div>
-  <div id="groups"></div>
+    <div id="groups"></div>
+  </main>
 
 <script src="/chart.js"></script>
 <script>
