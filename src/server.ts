@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import path from "node:path";
 import { getLatestReadings, getHistory, getMachineIds } from "./db";
+import { groups } from "./machines";
 
 const app = express();
 const PORT = process.env.DASHBOARD_PORT ? Number(process.env.DASHBOARD_PORT) : 3500;
@@ -14,6 +15,18 @@ app.get("/api/latest", (_req, res) => {
 
 app.get("/api/machines", (_req, res) => {
   res.json(getMachineIds());
+});
+
+// Grup/makine/tag yapisini tarayiciya verir (nodeId'ler PLC ic adresleme
+// detayi oldugu icin disaridaki istemciye sizdirilmiyor, sadece etiketler).
+app.get("/api/groups", (_req, res) => {
+  res.json(
+    groups.map((g) => ({
+      id: g.id,
+      label: g.label,
+      machines: g.machines.map((m) => ({ id: m.id, tags: m.tags.map((t) => t.label) })),
+    }))
+  );
 });
 
 app.get("/api/history", (req, res) => {

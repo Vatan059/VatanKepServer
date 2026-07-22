@@ -4,29 +4,70 @@
 <meta charset="UTF-8" />
 <title>VatanKepServer - Ekstruder Izleme</title>
 <style>
-  body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 24px; }
-  a { color: #6da7ec; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  #status { color: #888; font-size: 13px; margin-bottom: 20px; }
-  table { border-collapse: collapse; width: 100%; max-width: 900px; }
-  th, td { text-align: left; padding: 8px 14px; border-bottom: 1px solid #333; }
-  th { color: #999; font-weight: 500; font-size: 13px; text-transform: uppercase; }
-  td.stale { color: #666; }
-  td.value { font-variant-numeric: tabular-nums; font-size: 16px; }
-  tr.machine-stopped td.value { color: #777; }
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --border: rgba(11,11,11,0.10);
+    --series: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --border: rgba(255,255,255,0.10);
+      --series: #3987e5;
+    }
+  }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; padding: 24px; }
+  a { color: var(--series); }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  #status { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+
+  details.group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; }
+  details.group summary { cursor: pointer; padding: 12px 16px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+  details.group summary::-webkit-details-marker { display: none; }
+  details.group summary::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s; }
+  details.group[open] summary::before { transform: rotate(90deg); }
+  .group-count { color: var(--text-muted); font-weight: 400; font-size: 13px; }
+  .group-body { padding: 4px 16px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .group-empty { padding: 0 16px 16px; color: var(--text-muted); font-size: 13px; }
+
+  .machine-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .machine-card h3 { margin: 0 0 6px; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; }
+  .machine-card h3 a { font-size: 12px; font-weight: 400; }
+  .tag-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+  .tag-row .label { color: var(--text-secondary); }
+  .tag-row .value { font-variant-numeric: tabular-nums; }
+  .stale { color: var(--text-muted); }
 </style>
 </head>
 <body>
-  <h1>Vatan Kablo — Ekstruder Hatti Canli Izleme</h1>
+  <h1>Vatan Kablo — Canli Izleme</h1>
   <div id="status">Yukleniyor...</div>
-  <table>
-    <thead>
-      <tr><th>Makine</th><th>Cap</th><th>Metre</th><th>Hat Hizi</th><th>Son Guncelleme</th><th></th></tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
+  <div id="groups"></div>
 
 <script>
+let groupDefs = [];
+
+async function loadGroups() {
+  const res = await fetch("/api/groups");
+  groupDefs = await res.json();
+}
+
+function fmt(value) {
+  if (value === null || value === undefined) return "-";
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(2) : String(value);
+}
+
 async function refresh() {
   try {
     const res = await fetch("/api/latest");
@@ -38,43 +79,59 @@ async function refresh() {
       byMachine[r.machine_id][r.tag_label] = { value: r.value, recorded_at: r.recorded_at };
     }
 
-    const machineIds = Object.keys(byMachine).sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true })
-    );
-
     const now = Date.now();
-    const tbody = document.getElementById("rows");
-    tbody.innerHTML = "";
+    const container = document.getElementById("groups");
+    container.innerHTML = "";
 
-    for (const id of machineIds) {
-      const tags = byMachine[id];
-      const newest = Math.max(...Object.values(tags).map((t) => t.recorded_at));
-      const staleMs = now - newest;
-      const staleClass = staleMs > 5000 ? "stale" : "";
+    for (const group of groupDefs) {
+      const details = document.createElement("details");
+      details.className = "group";
+      details.open = group.machines.length > 0;
 
-      const fmt = (t) => (t && t.value !== null && t.value !== undefined ? Number(t.value).toFixed(2) : "-");
+      const summary = document.createElement("summary");
+      summary.innerHTML = `${group.label} <span class="group-count">(${group.machines.length} makine)</span>`;
+      details.appendChild(summary);
 
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${id}</td>
-        <td class="value ${staleClass}">${fmt(tags.Cap)}</td>
-        <td class="value ${staleClass}">${fmt(tags.Metre)}</td>
-        <td class="value ${staleClass}">${fmt(tags.HatHizi)}</td>
-        <td class="${staleClass}">${new Date(newest).toLocaleTimeString("tr-TR")}</td>
-        <td><a href="/history.html?machine=${encodeURIComponent(id)}">Gecmis</a></td>
-      `;
-      tbody.appendChild(tr);
+      if (group.machines.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "group-empty";
+        empty.textContent = "Henuz makine eklenmedi.";
+        details.appendChild(empty);
+      } else {
+        const body = document.createElement("div");
+        body.className = "group-body";
+
+        for (const machine of group.machines) {
+          const tags = byMachine[machine.id] || {};
+          const newest = Math.max(0, ...Object.values(tags).map((t) => t.recorded_at));
+          const staleClass = newest && now - newest > 5000 ? "stale" : "";
+
+          const card = document.createElement("div");
+          card.className = "machine-card";
+          const rows = machine.tags
+            .map(
+              (label) => `<div class="tag-row ${staleClass}"><span class="label">${label}</span><span class="value">${fmt(tags[label] ? tags[label].value : null)}</span></div>`
+            )
+            .join("");
+          card.innerHTML = `<h3>${machine.id} <a href="/history.html?machine=${encodeURIComponent(machine.id)}">Gecmis</a></h3>${rows}`;
+          body.appendChild(card);
+        }
+        details.appendChild(body);
+      }
+
+      container.appendChild(details);
     }
 
-    document.getElementById("status").textContent =
-      "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
+    document.getElementById("status").textContent = "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
   } catch (err) {
     document.getElementById("status").textContent = "Baglanti hatasi: " + err;
   }
 }
 
-refresh();
-setInterval(refresh, 2000);
+loadGroups().then(() => {
+  refresh();
+  setInterval(refresh, 2000);
+});
 </script>
 </body>
 </html>

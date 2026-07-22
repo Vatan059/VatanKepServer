@@ -68,16 +68,31 @@
   <div class="charts" id="charts"></div>
 
 <script>
-const TAGS = ["Cap", "Metre", "HatHizi"];
 let currentHours = 1;
+let tagsByMachine = {};
 
 async function loadMachines() {
-  const res = await fetch("/api/machines");
-  const machines = await res.json();
+  const res = await fetch("/api/groups");
+  const groups = await res.json();
+
   const select = document.getElementById("machineSelect");
-  select.innerHTML = machines.map((m) => `<option value="${m}">${m}</option>`).join("");
+  select.innerHTML = "";
+  for (const group of groups) {
+    if (group.machines.length === 0) continue;
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = group.label;
+    for (const machine of group.machines) {
+      tagsByMachine[machine.id] = machine.tags;
+      const option = document.createElement("option");
+      option.value = machine.id;
+      option.textContent = machine.id;
+      optgroup.appendChild(option);
+    }
+    select.appendChild(optgroup);
+  }
+
   const params = new URLSearchParams(location.search);
-  if (params.get("machine") && machines.includes(params.get("machine"))) {
+  if (params.get("machine") && tagsByMachine[params.get("machine")]) {
     select.value = params.get("machine");
   }
   select.addEventListener("change", renderAll);
@@ -198,7 +213,8 @@ async function renderAll() {
   container.innerHTML = "";
   if (!machine) return;
 
-  for (const tag of TAGS) {
+  const tags = tagsByMachine[machine] || [];
+  for (const tag of tags) {
     const res = await fetch(`/api/history?machineId=${encodeURIComponent(machine)}&tagLabel=${encodeURIComponent(tag)}&hours=${currentHours}`);
     const points = await res.json();
     if (points.length === 0) continue;
