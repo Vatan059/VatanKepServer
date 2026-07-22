@@ -344,12 +344,42 @@ const telCekme = noTags([
 ]);
 // Tum TREX is istasyonlari (MW01-04, RB01-06) KEPServerEX'te karsiligini buldu.
 
-const iletkenBukum = noTags([
-  "BM4-Makine",
-  "BM5-Makine",
-  "BM6-Makine",
-  "BM7-Makine",
-  "BM8-Makine",
+const iletkenBukum: Machine[] = [
+  {
+    id: "BM4-Makine",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=BM4-Makine.BM4.BM4-Metre" },
+      { label: "HatHizi", nodeId: "ns=2;s=BM4-Makine.BM4.ekran.travers  hizi mdk" },
+      { label: "KabloYaricapi", nodeId: "ns=2;s=BM4-Makine.BM4.ekran.kablo yaricapi" },
+    ],
+  },
+  {
+    id: "BM5-Makine",
+    tags: [{ label: "Metre", nodeId: "ns=2;s=BM5-Makine.BM5.BM5-Metre" }],
+  },
+  {
+    id: "BM6-Makine",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=BM6-Makine.BM6.BM6-Metre" },
+      { label: "HatHizi", nodeId: "ns=2;s=BM6-Makine.BM6.ekran.travers  hizi mdk" },
+      { label: "KabloYaricapi", nodeId: "ns=2;s=BM6-Makine.BM6.ekran.kablo yaricapi" },
+    ],
+  },
+  {
+    id: "BM7-Makine",
+    tags: [{ label: "Metre", nodeId: "ns=2;s=BM7-Makine.BM7.BM7-Metre" }],
+  },
+  {
+    id: "BM8-Makine",
+    tags: [
+      { label: "Metre", nodeId: "ns=2;s=BM8-Makine.BM8.DB6_HMI.METRE TOPLAM" },
+      { label: "HatHizi", nodeId: "ns=2;s=BM8-Makine.BM8.DB6_HMI.M/DK" },
+      { label: "HatveMM", nodeId: "ns=2;s=BM8-Makine.BM8.DB6_HMI.HATVE MM" },
+    ],
+  },
+];
+
+const iletkenBukumDiger = noTags([
   "ST1-Makine",
   "ST2-Makine",
   "ST4-Makine",
@@ -390,7 +420,7 @@ export const groups: MachineGroup[] = [
   { id: "kangal", label: "Kangal", machines: kangal },
   { id: "aktarma", label: "Aktarma", machines: aktarma },
   { id: "tel-cekme", label: "Tel Cekme", machines: telCekme },
-  { id: "iletken-bukum", label: "Iletken Bukum", machines: iletkenBukum },
+  { id: "iletken-bukum", label: "Iletken Bukum", machines: [...iletkenBukum, ...iletkenBukumDiger] },
   { id: "damar-bukum", label: "Damar Bukum", machines: damarBukum },
   { id: "cv", label: "CV Hatti", machines: cv },
   // Asagidaki gruplarin TREX'te is istasyonu kaydi var ama KEPServerEX'te
