@@ -36,6 +36,14 @@ db.exec(`
     max_value REAL,
     PRIMARY KEY (machine_id, tag_label)
   );
+
+  CREATE TABLE IF NOT EXISTS alert_state (
+    machine_id TEXT NOT NULL,
+    tag_label TEXT NOT NULL,
+    is_alerting INTEGER NOT NULL DEFAULT 0,
+    last_alert_at INTEGER,
+    PRIMARY KEY (machine_id, tag_label)
+  );
 `);
 
 const insertReadingStmt = db.prepare(
@@ -94,4 +102,24 @@ const upsertThresholdStmt = db.prepare(`
 `);
 export function setThreshold(machineId: string, tagLabel: string, minValue: number | null, maxValue: number | null) {
   upsertThresholdStmt.run(machineId, tagLabel, minValue, maxValue);
+}
+
+export interface AlertState {
+  is_alerting: number;
+  last_alert_at: number | null;
+}
+
+const getAlertStateStmt = db.prepare(
+  "SELECT is_alerting, last_alert_at FROM alert_state WHERE machine_id = ? AND tag_label = ?"
+);
+export function getAlertState(machineId: string, tagLabel: string): AlertState | undefined {
+  return getAlertStateStmt.get(machineId, tagLabel) as AlertState | undefined;
+}
+
+const setAlertStateStmt = db.prepare(`
+  INSERT INTO alert_state (machine_id, tag_label, is_alerting, last_alert_at) VALUES (?, ?, ?, ?)
+  ON CONFLICT(machine_id, tag_label) DO UPDATE SET is_alerting = excluded.is_alerting, last_alert_at = excluded.last_alert_at
+`);
+export function setAlertState(machineId: string, tagLabel: string, isAlerting: boolean, lastAlertAt: number | null) {
+  setAlertStateStmt.run(machineId, tagLabel, isAlerting ? 1 : 0, lastAlertAt);
 }

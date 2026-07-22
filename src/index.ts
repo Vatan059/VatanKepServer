@@ -2,6 +2,7 @@ import "dotenv/config";
 import { OPCUAClient, MessageSecurityMode, SecurityPolicy, AttributeIds, TimestampsToReturn, ClientSubscription, ClientMonitoredItem, DataValue } from "node-opcua";
 import { machines } from "./machines";
 import { recordReading } from "./db";
+import { checkThresholdAndAlert } from "./alerts";
 
 const endpointUrl = process.env.OPCUA_ENDPOINT ?? "opc.tcp://192.168.5.95:49320";
 
@@ -44,8 +45,12 @@ async function main() {
       monitoredItem.on("changed", (dataValue: DataValue) => {
         const value = dataValue.value.value;
         const now = Date.now();
+        const numericValue = typeof value === "number" ? value : null;
         console.log(`${new Date(now).toISOString()}  ${machine.id}.${tag.label} = ${value}`);
-        recordReading(machine.id, tag.label, typeof value === "number" ? value : null, now);
+        recordReading(machine.id, tag.label, numericValue, now);
+        checkThresholdAndAlert(machine.id, tag.label, numericValue, now).catch((err) =>
+          console.error(`[alerts] ${machine.id}.${tag.label} kontrol hatasi:`, err)
+        );
       });
 
       monitoredItem.on("err", (message: string) => {
