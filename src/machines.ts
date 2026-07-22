@@ -316,17 +316,19 @@ const dozaj: Machine[] = [
 // makine KEPServerEX'te var, tag esleme (Cap/Metre gibi) sonraki asamada yapilacak.
 const noTags = (ids: string[]): Machine[] => ids.map((id) => ({ id, tags: [] }));
 
-// Is merkezi (WrkCtrId) -> Grup listesinden cikarilan yapi. KEPServerEX'teki
-// gercek kanal adlariyla karsilastirildi - bazi is merkezlerinin KEPServerEX'te
-// hic karsiligi yok (asagida grup yorumlarinda belirtildi), o yuzden gruba
-// eklenmediler.
-const zirhlama = noTags(["ST8-Makine", "ST10-Makine", "ST11-Makine", "ST12-Makine", "ST13-Makine", "ST15-Makine"]);
-// Eksik/KEPServerEX'te karsiligi olmayan is merkezleri: BRD16-1..4, BRD24-1/2, ST25, MT01, MT02, ST09
+// Grup yapisi TREX veritabanindan (PWORKCENTER + PWORKSTATION tablolari,
+// 192.168.5.19\TREX) alindi - D365'teki eski liste yerine bu esas alindi.
+// Her grup icin KEPServerEX'teki (tags.txt) gercek kanal adlariyla karsilastirildi;
+// TREX'te tanimli olup KEPServerEX'te kanali olmayan is istasyonlari gruba eklenmedi.
+
+const zirhlama = noTags(["ST8-Makine", "ST10-Makine", "ST11-Makine", "ST12-Makine", "ST13-Makine", "ST15-Makine", "ST18-Makine"]);
+// TREX'te var ama KEPServerEX'te kanali yok: MT01, MT02, ST09, ST25
 
 const kangal = noTags(["CM1", "CM2", "CM3-Makine", "CM4"]);
+// TREX'te var ama KEPServerEX'te kanali yok: CM05
 
 const aktarma = noTags(["AK1-Makine", "AK2-Makine"]);
-// AK03 KEPServerEX'te bulunamadi
+// TREX'te var ama KEPServerEX'te kanali yok: AK03
 
 const telCekme = noTags([
   "RB1-Makine",
@@ -340,19 +342,46 @@ const telCekme = noTags([
   "MW3-Codesys",
   "MW4-Makine",
 ]);
-// NR01 KEPServerEX'te bulunamadi. RB4-6/MW3-4 listede yoktu ama ayni onek oldugu icin eklendi - teyit edilmeli.
+// Tum TREX is istasyonlari (MW01-04, RB01-06) KEPServerEX'te karsiligini buldu.
 
-const iletkenBukum = noTags(["BM4-Makine", "BM5-Makine", "BM6-Makine", "BM7-Makine", "BM8-Makine", "ST2-Makine", "ST4-Makine", "ST16-Makine"]);
-// DIKKAT: ERP'deki BM01-04 numaralari ile KEPServerEX'teki BM4-BM8 numaralari uyusmuyor.
-// Hangi fiziksel makinenin hangi KEPServerEX kanaligina karsilik geldigi teyit edilmeli. ST3 KEPServerEX'te yok.
+const iletkenBukum = noTags([
+  "BM4-Makine",
+  "BM5-Makine",
+  "BM6-Makine",
+  "BM7-Makine",
+  "BM8-Makine",
+  "ST1-Makine",
+  "ST2-Makine",
+  "ST4-Makine",
+  "ST16-Makine",
+  "ST17-Makine",
+  "ST19-Makine",
+  "ST20-Makine",
+  "ST21-Makine",
+  "ST22-Makine",
+]);
+// TREX'te var ama KEPServerEX'te kanali yok: BM01, BM02, BM03 (KEPServerEX'te sadece BM4-8 var,
+// TREX'teki BM01-08 numaralamasiyla birebir eslesmiyor - hangi fiziksel makinenin hangisi
+// oldugu teyit edilmeli), ST03, ST24
 
-const damarBukum = noTags(["ST6-Makine", "ST7-Makine"]);
-// ST14 KEPServerEX'te bulunamadi
+const damarBukum = noTags(["ST5-Makine", "ST6-Makine", "ST7-Makine"]);
+// TREX'te var ama KEPServerEX'te kanali yok: ST14
 
-const plastikhane = noTags(["GR1-Makine", "GR3-Makine"]);
-// GEX01/02/03 iş merkezi kodlari KEPServerEX'te yok - GR1/GR3 kanallarinin
-// bunlarin karsiligi olma ihtimali var (Plastikhane baglami uyusuyor) ama
-// TEYIT EDILMEDI, varsayim olarak isaretlendi.
+// Su gruplarin TREX'te tanimli is istasyonlari var ama KEPServerEX'te hic kanali yok -
+// henuz OPC UA uzerinden izlenmiyor. Ileride baglanti kurulursa buraya eklenecek.
+// - PLASTIKHANE: GEX01-04 (DIKKAT: daha once KEPServerEX'teki GR1-Makine/GR3-Makine'nin
+//   bunlarin karsiligi olabilecegi varsayilmisti, TREX verisiyle bu teyit EDILEMEDI -
+//   GR1/GR3'un TREX'te hic kaydi yok, ayri/eski bir hat olabilir, GRUPLARA DAHIL EDILMEDI.
+// - UPCAST: NR01, NR02
+// - ZAYIF AKIM: BRD16-1..4, BRD24-1/2, ZEX01, ZST01-05 (D365 listesinde "Zirhlama" sanilmisti,
+//   TREX'e gore ayri bir grup)
+// - AL DOKUM: AL CCRLINE, Aluminyum Dokum
+// - KALITE KONTROL: KK
+// - MAKARA URETIM: ARABA, Cakim
+// - PLANLAMA, CV (CV01-03 KEPServerEX'te var ama ayri ele alinacak - asagida)
+
+const cv = noTags(["CV01", "CV02", "CV03"]);
+// TREX'te var ama KEPServerEX'te kanali yok: CV04, CV05, YG
 
 export const groups: MachineGroup[] = [
   { id: "ekstruder", label: "Ekstruder Hatti", machines: ekstruder },
@@ -363,11 +392,14 @@ export const groups: MachineGroup[] = [
   { id: "tel-cekme", label: "Tel Cekme", machines: telCekme },
   { id: "iletken-bukum", label: "Iletken Bukum", machines: iletkenBukum },
   { id: "damar-bukum", label: "Damar Bukum", machines: damarBukum },
-  { id: "plastikhane", label: "Plastikhane (teyit gerekiyor)", machines: plastikhane },
-  // Bu 3 is merkezi grubunun KEPServerEX'te hic karsiligi bulunamadi -
-  // henuz izlenmiyor, ileride baglanti kurulunca makineler eklenecek.
-  { id: "og-hatti", label: "OG Hatti", machines: [] },
-  { id: "yg-hatti", label: "YG Hatti", machines: [] },
+  { id: "cv", label: "CV Hatti", machines: cv },
+  // Asagidaki gruplarin TREX'te is istasyonu kaydi var ama KEPServerEX'te
+  // hic kanali bulunamadi - henuz izlenmiyor.
+  { id: "plastikhane", label: "Plastikhane", machines: [] },
+  { id: "upcast", label: "Upcast", machines: [] },
+  { id: "zayif-akim", label: "Zayif Akim", machines: [] },
+  { id: "al-dokum", label: "Al Dokum", machines: [] },
+  { id: "kalite-kontrol", label: "Kalite Kontrol", machines: [] },
   { id: "makara-uretim", label: "Makara Uretim", machines: [] },
 ];
 
