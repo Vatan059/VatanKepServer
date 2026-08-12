@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>VatanKepServer - Canli Izleme</title>
+<title>VatanKepServer - Firin Izleme</title>
 <style>
   :root {
     color-scheme: light;
@@ -42,41 +42,21 @@
   nav { display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
 
   .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(55vw, 820px); opacity: 0.05; z-index: -1; pointer-events: none; user-select: none; }
-  #status { color: var(--text-muted); font-size: 12px; }
-  .filter-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
-  .filter-toggle input { width: 16px; height: 16px; }
-  .hidden-by-filter { display: none !important; }
 
-  main { max-width: 2200px; margin: 0 auto; padding: 16px 24px 40px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 40px 24px 60px; }
+  .intro { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
 
-  details.group { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
-  details.group summary { cursor: pointer; padding: 14px 16px; min-height: 24px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
-  details.group summary::-webkit-details-marker { display: none; }
-  details.group summary::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s; display: inline-block; }
-  details.group[open] summary::before { transform: rotate(90deg); }
-  .group-count { color: var(--text-muted); font-weight: 400; font-size: 13px; }
-  .group-body { padding: 4px 14px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-  .group-empty { padding: 0 16px 16px; color: var(--text-muted); font-size: 13px; }
-
-  .machine-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: color-mix(in srgb, var(--surface) 96%, var(--text-primary) 4%); }
-  .machine-card h3 { margin: 0 0 6px; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; }
-  .machine-card h3 a { font-size: 12px; font-weight: 400; }
-  .tag-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
-  .tag-row .label { color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
-  .tag-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-  .stale .tag-dot { opacity: 0.35; }
-  .tag-row .value { font-variant-numeric: tabular-nums; font-weight: 500; }
-  .stale { color: var(--text-muted); }
-  .stale .value { font-weight: 400; }
-  .tag-row.alert .value { color: #d03b3b; font-weight: 700; }
-  .tag-row.alert .value::after { content: " ⚠"; }
+  .furnace-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .furnace-card { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px 24px; text-decoration: none; color: var(--text-primary); transition: transform 0.15s, box-shadow 0.15s; }
+  .furnace-card:hover { text-decoration: none; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.10); }
+  .furnace-card .icon { font-size: 34px; margin-bottom: 12px; display: block; }
+  .furnace-card h2 { margin: 0 0 6px; font-size: 19px; }
+  .furnace-card p { margin: 0; color: var(--text-muted); font-size: 13px; }
 
   @media (max-width: 480px) {
     header { padding: 10px 14px; }
     header h1 { font-size: 15px; width: 100%; }
-    main { padding: 12px 12px 32px; }
-    .group-body { grid-template-columns: 1fr; padding: 4px 10px 12px; }
-    details.group summary { padding: 14px; font-size: 14px; }
+    main { padding: 28px 16px 40px; }
   }
 </style>
 </head>
@@ -85,190 +65,32 @@
   <header>
     <div class="brand">
       <img src="/logo.png" alt="Vatan Kablo" />
-      <h1>Vatan Kablo — Canli Izleme</h1>
+      <h1>Vatan Kablo — Firin Izleme</h1>
     </div>
     <nav>
-      <label class="filter-toggle"><input type="checkbox" id="onlyWithTags" checked /> Sadece tag tanimli olanlar</label>
       <a href="/history-groups.html">Gruplu gecmis</a>
-      <a href="/history.html">Tek makine gecmisi</a>
       <a href="/thresholds.html">Min/Max tanimlari</a>
-      <span id="status">Yukleniyor...</span>
     </nav>
   </header>
   <main>
-    <div id="groups"></div>
+    <div class="intro">AL CCRLINE altindaki 3 firin icin canli izleme sayfalari.</div>
+    <div class="furnace-grid">
+      <a class="furnace-card" href="/rejen.html">
+        <span class="icon">🔥</span>
+        <h2>Rejen</h2>
+        <p>Yakma hatti - sicaklik, basinc, klape pozisyonlari</p>
+      </a>
+      <a class="furnace-card" href="/dinlendirme-a.html">
+        <span class="icon">🌡️</span>
+        <h2>Dinlendirme A</h2>
+        <p>Devirmeli firin - sicaklik, basinc, pozisyon, alarmlar</p>
+      </a>
+      <a class="furnace-card" href="/dinlendirme-b.html">
+        <span class="icon">🌡️</span>
+        <h2>Dinlendirme B</h2>
+        <p>Devirmeli firin - sicaklik, basinc, pozisyon, alarmlar</p>
+      </a>
+    </div>
   </main>
-
-<script>
-// valueCells: "machineId::tagLabel" -> <span class="value"> elemani
-// rowsByMachine: machineId -> her tag-row <div> elemani (stale renklendirme icin)
-// cardByMachine / groupInfo: filtreleme (calisiyor/calismiyor) icin DOM referanslari
-const valueCells = {};
-const rowsByMachine = {};
-const cardByMachine = {};
-const groupInfo = {}; // groupId -> { countSpan, totalCount, machineIds: [] }
-const hasTagsState = {}; // machineId -> bool (tag tanimli mi - statik, canli veriye bagli degil)
-const thresholdByKey = {}; // "machineId::tagLabel" -> { min_value, max_value }
-
-// Tag tipine (Cap, Metre, HatHizi, Boya1...) gore sabit, tekrar eden bir renk -
-// makine/grup ne olursa olsun ayni tag tipi hep ayni renkte gorunur. Kart
-// tamamen boyanmiyor, sadece etiketin yanindaki kucuk nokta renkleniyor.
-const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-const TAG_PALETTE = isDark
-  ? ["#3987e5", "#199e70", "#c98500", "#008300", "#9085e9", "#e66767", "#d55181", "#d95926"]
-  : ["#2a78d6", "#1baf7a", "#eda100", "#008300", "#4a3aa7", "#e34948", "#e87ba4", "#eb6834"];
-const tagColorByLabel = {};
-function colorForTag(label) {
-  if (!tagColorByLabel[label]) {
-    const idx = Object.keys(tagColorByLabel).length % TAG_PALETTE.length;
-    tagColorByLabel[label] = TAG_PALETTE[idx];
-  }
-  return tagColorByLabel[label];
-}
-
-function fmt(value) {
-  if (value === null || value === undefined) return "-";
-  const n = Number(value);
-  return Number.isFinite(n) ? n.toFixed(2) : String(value);
-}
-
-// DOM'u bir kere kurar. Sonraki refresh()'ler sadece deger/stale gunceller,
-// <details> acik/kapali durumuna hic dokunmaz (kullanicinin kapattigi grup
-// tekrar kendiliginden acilmasin diye).
-function buildStructure(groupDefs) {
-  const container = document.getElementById("groups");
-  container.innerHTML = "";
-
-  for (const group of groupDefs) {
-    const details = document.createElement("details");
-    details.className = "group";
-    details.open = group.machines.length > 0;
-
-    const summary = document.createElement("summary");
-    const countSpan = document.createElement("span");
-    countSpan.className = "group-count";
-    countSpan.textContent = `(${group.machines.length} makine)`;
-    summary.textContent = group.label + " ";
-    summary.appendChild(countSpan);
-    details.appendChild(summary);
-
-    groupInfo[group.id] = { details, countSpan, totalCount: group.machines.length, machineIds: group.machines.map((m) => m.id) };
-
-    if (group.machines.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "group-empty";
-      empty.textContent = "Henuz makine eklenmedi.";
-      details.appendChild(empty);
-    } else {
-      const body = document.createElement("div");
-      body.className = "group-body";
-
-      for (const machine of group.machines) {
-        const card = document.createElement("div");
-        card.className = "machine-card";
-        card.innerHTML = `<h3>${machine.id} <a href="/history.html?machine=${encodeURIComponent(machine.id)}">Gecmis</a></h3>`;
-        cardByMachine[machine.id] = card;
-        hasTagsState[machine.id] = machine.tags.length > 0;
-
-        if (machine.tags.length === 0) {
-          const empty = document.createElement("div");
-          empty.className = "group-empty";
-          empty.style.padding = "0";
-          empty.textContent = "Tag tanimlanmadi.";
-          card.appendChild(empty);
-        } else {
-          rowsByMachine[machine.id] = [];
-          for (const label of machine.tags) {
-            const row = document.createElement("div");
-            row.className = "tag-row";
-            row.innerHTML = `<span class="label"><span class="tag-dot" style="background:${colorForTag(label)}"></span>${label}</span><span class="value">-</span>`;
-            card.appendChild(row);
-            valueCells[`${machine.id}::${label}`] = row.querySelector(".value");
-            rowsByMachine[machine.id].push(row);
-          }
-        }
-        body.appendChild(card);
-      }
-      details.appendChild(body);
-    }
-
-    container.appendChild(details);
-  }
-}
-
-// "Sadece tag tanimli olanlar" filtresi: statik bir kritere gore (machines.ts'te
-// tag tanimlanmis mi) calisir - canli veri tazeligine BAKMAZ, boylece ara ara
-// veri gelen makineler filtre acikken yanip sonmez (flicker etmez).
-function applyFilter() {
-  const onlyWithTags = document.getElementById("onlyWithTags").checked;
-
-  for (const [groupId, info] of Object.entries(groupInfo)) {
-    let visibleCount = 0;
-    for (const machineId of info.machineIds) {
-      const card = cardByMachine[machineId];
-      const hide = onlyWithTags && !hasTagsState[machineId];
-      card.classList.toggle("hidden-by-filter", hide);
-      if (!hide) visibleCount++;
-    }
-    info.countSpan.textContent = onlyWithTags
-      ? `(${visibleCount}/${info.totalCount} tag tanimli)`
-      : `(${info.totalCount} makine)`;
-    info.details.classList.toggle("hidden-by-filter", onlyWithTags && info.totalCount > 0 && visibleCount === 0);
-  }
-}
-
-async function loadGroups() {
-  const res = await fetch("/api/groups");
-  buildStructure(await res.json());
-}
-
-async function loadThresholds() {
-  const res = await fetch("/api/thresholds");
-  const rows = await res.json();
-  for (const t of rows) thresholdByKey[`${t.machine_id}::${t.tag_label}`] = t;
-}
-
-async function refresh() {
-  try {
-    const res = await fetch("/api/latest");
-    const rows = await res.json();
-
-    const latestByMachine = {};
-    for (const r of rows) {
-      const key = `${r.machine_id}::${r.tag_label}`;
-      const cell = valueCells[key];
-      if (cell) {
-        cell.textContent = fmt(r.value);
-        const t = thresholdByKey[key];
-        const n = Number(r.value);
-        const outOfRange =
-          t && Number.isFinite(n) && ((t.min_value !== null && n < t.min_value) || (t.max_value !== null && n > t.max_value));
-        cell.closest(".tag-row").classList.toggle("alert", !!outOfRange);
-      }
-      latestByMachine[r.machine_id] = Math.max(latestByMachine[r.machine_id] || 0, r.recorded_at);
-    }
-
-    const now = Date.now();
-    for (const [machineId, rows2] of Object.entries(rowsByMachine)) {
-      const newest = latestByMachine[machineId];
-      const stale = newest && now - newest > 5000;
-      for (const row of rows2) row.classList.toggle("stale", !!stale);
-    }
-
-    document.getElementById("status").textContent = "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
-  } catch (err) {
-    document.getElementById("status").textContent = "Baglanti hatasi: " + err;
-  }
-}
-
-document.getElementById("onlyWithTags").addEventListener("change", applyFilter);
-
-Promise.all([loadGroups(), loadThresholds()]).then(() => {
-  applyFilter();
-  refresh();
-  setInterval(refresh, 2000);
-  setInterval(loadThresholds, 30000); // baska bir sekmede degistirilmis olabilir
-});
-</script>
 </body>
 </html>

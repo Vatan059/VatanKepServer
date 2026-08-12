@@ -15,6 +15,8 @@
     --gridline: #e1e0d9;
     --baseline: #c3c2b7;
     --series: #2a78d6;
+    --trend-up: #1f9d55;
+    --trend-down: #d9822b;
     --border: rgba(11,11,11,0.10);
     --header-bg: rgba(252,252,251,0.85);
   }
@@ -29,6 +31,8 @@
       --gridline: #2c2c2a;
       --baseline: #383835;
       --series: #3987e5;
+      --trend-up: #34c77a;
+      --trend-down: #f2a65a;
       --border: rgba(255,255,255,0.10);
       --header-bg: rgba(26,26,25,0.85);
     }
@@ -56,10 +60,22 @@
   .range-group button.active { background: var(--series); color: #fff; }
   .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
   .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-  .chart-title { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .chart-title-row { display: flex; align-items: center; gap: 8px; }
+  .chart-title { font-size: 14px; color: var(--text-secondary); }
+  .trend-badge { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+  .trend-badge.up { color: var(--trend-up); background: color-mix(in srgb, var(--trend-up) 15%, transparent); }
+  .trend-badge.down { color: var(--trend-down); background: color-mix(in srgb, var(--trend-down) 15%, transparent); }
+  .trend-badge.flat { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 15%, transparent); }
+  .chart-actions { display: flex; gap: 6px; }
+  .chart-btn { font: inherit; font-size: 11px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+  .chart-btn:hover { background: var(--series); color: #fff; border-color: var(--series); }
+  .chart-btn.copied { background: var(--trend-up); color: #fff; border-color: var(--trend-up); }
   .chart-empty { color: var(--text-muted); font-size: 13px; }
   svg { width: 100%; height: 160px; overflow: visible; display: block; }
   .line { fill: none; stroke: var(--series); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .line-up { stroke: var(--trend-up); }
+  .line-down { stroke: var(--trend-down); }
   .end-dot { fill: var(--series); stroke: var(--surface); stroke-width: 2; }
   .gridline { stroke: var(--gridline); stroke-width: 1; }
   .axis-label { fill: var(--text-muted); font-size: 11px; }

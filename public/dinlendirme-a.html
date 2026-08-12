@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>VatanKepServer - Dinlendirme A</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-2: #f3f2ef;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --border: rgba(11,11,11,0.10);
+    --series: #2a78d6;
+    --alarm: #d03b3b;
+    --header-bg: rgba(252,252,251,0.85);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-2: #232322;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --border: rgba(255,255,255,0.10);
+      --series: #3987e5;
+      --alarm: #ff6b6b;
+      --header-bg: rgba(26,26,25,0.85);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; -webkit-tap-highlight-color: transparent; }
+  a { color: var(--series); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { position: sticky; top: 0; z-index: 10; background: var(--header-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+  header .brand { display: flex; align-items: center; gap: 10px; }
+  header .brand img { height: 30px; width: auto; display: block; }
+  header h1 { font-size: 17px; margin: 0; }
+  nav { display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
+
+  .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(55vw, 820px); opacity: 0.05; z-index: -1; pointer-events: none; user-select: none; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 16px 24px 40px; }
+  #status { color: var(--text-muted); font-size: 12px; margin-bottom: 14px; }
+
+  details.section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
+  details.section > summary { cursor: pointer; padding: 14px 16px; font-size: 15px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
+  details.section > summary::-webkit-details-marker { display: none; }
+  details.section > summary::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s; }
+  details.section[open] > summary::before { transform: rotate(90deg); }
+  .section-count { color: var(--text-muted); font-weight: 400; font-size: 13px; }
+  .section-body { padding: 4px 16px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 16px; }
+  .section-empty { padding: 0 16px 16px; color: var(--text-muted); font-size: 13px; }
+
+  .tag-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+  .tag-row .label { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-row .value { font-variant-numeric: tabular-nums; font-weight: 500; flex: none; }
+  .tag-row.alert .value { color: var(--alarm); font-weight: 700; }
+  .tag-row.alert .value::after { content: " ⚠"; }
+
+  @media (max-width: 480px) {
+    header { padding: 10px 14px; }
+    header h1 { font-size: 15px; width: 100%; }
+    main { padding: 12px 12px 32px; }
+    .section-body { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <img class="watermark" src="/logo.png" alt="" />
+  <header>
+    <div class="brand">
+      <img src="/logo.png" alt="Vatan Kablo" />
+      <h1>Dinlendirme A — Canli Izleme</h1>
+    </div>
+    <nav>
+      <a href="/">Firinlar</a>
+      <a href="/history.html?machine=Dinlendirme_A">Gecmis</a>
+      <span id="status">Yukleniyor...</span>
+    </nav>
+  </header>
+  <main>
+    <div id="sections"></div>
+  </main>
+
+<script>
+const MACHINE_ID = "Dinlendirme_A";
+
+// Otomatik kesfedilen tag'ler prefix'lerine gore kategorilere ayrilir -
+// GenelDatalar cogunlukla sicaklik/PID, KalibrasyonDB basinc sensoru degeri,
+// ScadaDB pota pozisyonu/durum bilgisi, DB6000 alarm bitleri.
+const CATEGORIES = [
+  { id: "sicaklik", title: "Sicaklik / Genel", match: (t) => t.startsWith("GenelDatalar.") },
+  { id: "basinc", title: "Basinc", match: (t) => t.startsWith("KalibrasyonDB.") },
+  { id: "pozisyon", title: "Pozisyon / Durum", match: (t) => t.startsWith("ScadaDB.") },
+  { id: "alarm", title: "Alarmlar", match: (t) => t.startsWith("DB6000 - Alarmlar."), collapsed: true },
+];
+
+const valueCells = {};
+let thresholdByTag = {};
+
+function shortLabel(tag) {
+  const idx = tag.indexOf(".");
+  return idx === -1 ? tag : tag.slice(idx + 1);
+}
+
+function buildSections(tags) {
+  const container = document.getElementById("sections");
+  container.innerHTML = "";
+
+  for (const cat of CATEGORIES) {
+    const catTags = tags.filter(cat.match);
+
+    const details = document.createElement("details");
+    details.className = "section";
+    details.open = !cat.collapsed;
+
+    const summary = document.createElement("summary");
+    summary.textContent = cat.title + " ";
+    const count = document.createElement("span");
+    count.className = "section-count";
+    count.textContent = `(${catTags.length} tag)`;
+    summary.appendChild(count);
+    details.appendChild(summary);
+
+    if (catTags.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "section-empty";
+      empty.textContent = "Tag bulunamadi.";
+      details.appendChild(empty);
+    } else {
+      const body = document.createElement("div");
+      body.className = "section-body";
+      for (const tag of catTags) {
+        const row = document.createElement("div");
+        row.className = "tag-row";
+        row.innerHTML = `<span class="label" title="${tag}">${shortLabel(tag)}</span><span class="value">-</span>`;
+        valueCells[tag] = row.querySelector(".value");
+        body.appendChild(row);
+      }
+      details.appendChild(body);
+    }
+
+    container.appendChild(details);
+  }
+}
+
+async function loadTags() {
+  const res = await fetch("/api/groups");
+  const groups = await res.json();
+  const alccrline = groups.find((g) => g.id === "alccrline");
+  const machine = alccrline ? alccrline.machines.find((m) => m.id === MACHINE_ID) : null;
+  buildSections(machine ? machine.tags : []);
+}
+
+async function loadThresholds() {
+  const res = await fetch("/api/thresholds");
+  const rows = await res.json();
+  thresholdByTag = {};
+  for (const r of rows) {
+    if (r.machine_id === MACHINE_ID) thresholdByTag[r.tag_label] = r;
+  }
+}
+
+function fmt(value) {
+  if (value === null || value === undefined) return "-";
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(2) : String(value);
+}
+
+async function refresh() {
+  try {
+    const res = await fetch("/api/latest");
+    const rows = await res.json();
+    let newest = 0;
+    for (const r of rows) {
+      if (r.machine_id !== MACHINE_ID) continue;
+      if (r.recorded_at > newest) newest = r.recorded_at;
+      const cell = valueCells[r.tag_label];
+      if (!cell) continue;
+      cell.textContent = fmt(r.value);
+      const threshold = thresholdByTag[r.tag_label];
+      const n = Number(r.value);
+      const outOfRange =
+        threshold && Number.isFinite(n) &&
+        ((threshold.min_value !== null && n < threshold.min_value) || (threshold.max_value !== null && n > threshold.max_value));
+      cell.closest(".tag-row").classList.toggle("alert", !!outOfRange);
+    }
+
+    const stale = newest && Date.now() - newest > 10000;
+    document.getElementById("status").textContent = stale
+      ? "Veri gecikmis (alccrline toplayicisi calisiyor mu?)"
+      : "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
+  } catch (err) {
+    document.getElementById("status").textContent = "Baglanti hatasi: " + err;
+  }
+}
+
+Promise.all([loadTags(), loadThresholds()]).then(() => {
+  refresh();
+  setInterval(refresh, 2000);
+  setInterval(loadThresholds, 30000);
+});
+</script>
+</body>
+</html>

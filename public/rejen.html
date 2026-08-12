@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>VatanKepServer - Rejen</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --border: rgba(11,11,11,0.10);
+    --series: #2a78d6;
+    --header-bg: rgba(252,252,251,0.85);
+    --stage-bg: #eef0ea;
+    --badge-bg: #cfe8fb;
+    --badge-bg-set: #cdeccd;
+    --badge-text: #0b0b0b;
+    --alarm: #d03b3b;
+    --trend-up: #1f9d55;
+    --trend-down: #d9822b;
+    --pipe-egzoz: #d9536f;
+    --pipe-gaz: #eab308;
+    --pipe-hava: #2f7fd1;
+    --gridline: #e1e0d9;
+    --baseline: #c3c2b7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --border: rgba(255,255,255,0.10);
+      --series: #3987e5;
+      --header-bg: rgba(26,26,25,0.85);
+      --stage-bg: #1c211c;
+      --badge-bg: #1c3a52;
+      --badge-bg-set: #1c3a24;
+      --badge-text: #ffffff;
+      --alarm: #ff6b6b;
+      --trend-up: #34c77a;
+      --trend-down: #f2a65a;
+      --pipe-egzoz: #c24a63;
+      --pipe-gaz: #c99a1e;
+      --pipe-hava: #2a6bb0;
+      --gridline: #2c2c2a;
+      --baseline: #383835;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--text-primary); margin: 0; -webkit-tap-highlight-color: transparent; }
+  a { color: var(--series); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { position: sticky; top: 0; z-index: 10; background: var(--header-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+  header .brand { display: flex; align-items: center; gap: 10px; }
+  header .brand img { height: 30px; width: auto; display: block; }
+  header h1 { font-size: 17px; margin: 0; }
+  nav { display: flex; align-items: center; gap: 14px; font-size: 13px; flex-wrap: wrap; }
+
+  .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(55vw, 820px); opacity: 0.05; z-index: -1; pointer-events: none; user-select: none; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 16px 24px 40px; }
+  #status { color: var(--text-muted); font-size: 12px; margin-bottom: 10px; }
+
+  .stage-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--stage-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .stage-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .badge { position: absolute; transform: translate(-50%, -50%); background: var(--badge-bg); color: var(--badge-text); border-radius: 6px; padding: 4px 8px; font-size: clamp(9px, 1.1vw, 13px); text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.25); line-height: 1.25; white-space: nowrap; }
+  .badge.set { background: var(--badge-bg-set); }
+  .badge .label { display: block; font-size: 0.8em; opacity: 0.75; }
+  .badge .value { display: block; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .badge.alert .value { color: var(--alarm); }
+  .badge.alert .value::after { content: " ⚠"; }
+
+  .hist-btn { position: absolute; top: -8px; right: -8px; width: 18px; height: 18px; border-radius: 50%; border: none; background: var(--series); color: #fff; font-size: 10px; line-height: 18px; padding: 0; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .hist-btn:hover { filter: brightness(1.12); }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 14px; font-size: 12px; color: var(--text-secondary); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 6px; border-radius: 3px; display: inline-block; }
+
+  @media (max-width: 700px) {
+    .stage-wrap { aspect-ratio: 4 / 5; }
+    .badge { font-size: 9px; padding: 3px 5px; }
+  }
+
+  /* Gecmis/grafik modali */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; padding: 20px; }
+  .modal { background: var(--surface); border-radius: 12px; padding: 20px; width: 100%; max-width: 780px; max-height: 86vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 16px; font-weight: 600; }
+  .modal-close { background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--text-muted); padding: 0 4px; }
+  .modal-close:hover { color: var(--text-primary); }
+  .modal .controls { margin-bottom: 14px; }
+  .range-group { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; width: fit-content; }
+  .range-group button { font: inherit; padding: 7px 11px; min-height: 36px; border: none; background: var(--surface); color: var(--text-secondary); cursor: pointer; }
+  .range-group button.active { background: var(--series); color: #fff; }
+
+  /* chart.js'in urettigi ortak grafik elemanlari */
+  .chart-card { position: relative; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .chart-title-row { display: flex; align-items: center; gap: 8px; }
+  .chart-title { font-size: 13px; color: var(--text-secondary); }
+  .trend-badge { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+  .trend-badge.up { color: var(--trend-up); background: color-mix(in srgb, var(--trend-up) 15%, transparent); }
+  .trend-badge.down { color: var(--trend-down); background: color-mix(in srgb, var(--trend-down) 15%, transparent); }
+  .trend-badge.flat { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 15%, transparent); }
+  .chart-actions { display: flex; gap: 6px; }
+  .chart-btn { font: inherit; font-size: 11px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+  .chart-btn:hover { background: var(--series); color: #fff; border-color: var(--series); }
+  .chart-btn.copied { background: var(--trend-up); color: #fff; border-color: var(--trend-up); }
+  .chart-empty { color: var(--text-muted); font-size: 13px; }
+  .chart-card svg { width: 100%; height: 180px; overflow: visible; display: block; }
+  .line { fill: none; stroke: var(--series); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .line-up { stroke: var(--trend-up); }
+  .line-down { stroke: var(--trend-down); }
+  .line-alert { stroke: var(--alarm); }
+  .threshold-line { stroke: var(--alarm); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.6; }
+  .end-dot { fill: var(--series); stroke: var(--surface); stroke-width: 2; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--text-muted); font-size: 11px; }
+  .crosshair { stroke: var(--baseline); stroke-width: 1; }
+  .value-table { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); max-height: 220px; overflow-y: auto; font-size: 12px; }
+  .value-row { display: flex; justify-content: space-between; padding: 3px 2px; }
+  .value-row:nth-child(odd) { background: color-mix(in srgb, var(--surface) 92%, var(--text-primary) 8%); border-radius: 4px; }
+  .value-row-alert .value-num { color: var(--alarm); font-weight: 700; }
+  .value-time { color: var(--text-muted); }
+  .value-num { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .value-table-note { color: var(--text-muted); font-size: 11px; padding: 4px 2px 0; }
+  .tooltip { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--text-primary); pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; }
+  .hover-layer { fill: transparent; }
+</style>
+</head>
+<body>
+  <img class="watermark" src="/logo.png" alt="" />
+  <header>
+    <div class="brand">
+      <img src="/logo.png" alt="Vatan Kablo" />
+      <h1>Rejen — Canli Izleme</h1>
+    </div>
+    <nav>
+      <a href="/">Firinlar</a>
+      <a href="/history.html?machine=Rejen">Gecmis</a>
+      <span id="status">Yukleniyor...</span>
+    </nav>
+  </header>
+  <main>
+    <div class="stage-wrap" id="stage">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+        <!-- Gaz (sari) ana hatti -->
+        <path d="M 300 780 L 300 260 L 700 260" stroke="var(--pipe-gaz)" stroke-width="16" fill="none" />
+        <path d="M 300 780 L 300 640 L 1150 640 L 1150 300 L 1180 300" stroke="var(--pipe-gaz)" stroke-width="16" fill="none" />
+
+        <!-- Hava (mavi) ana hatti -->
+        <circle cx="230" cy="620" r="46" fill="none" stroke="var(--pipe-hava)" stroke-width="10" />
+        <path d="M 230 574 L 230 340 L 660 340" stroke="var(--pipe-hava)" stroke-width="16" fill="none" />
+        <path d="M 230 574 L 230 700 L 1100 700 L 1100 380 L 1170 380" stroke="var(--pipe-hava)" stroke-width="16" fill="none" />
+
+        <!-- Egzoz (kirmizi/pembe) ana hatti -->
+        <path d="M 700 220 L 640 220 L 640 470 L 1250 470" stroke="var(--pipe-egzoz)" stroke-width="16" fill="none" />
+        <path d="M 1180 260 L 1230 260 L 1230 470" stroke="var(--pipe-egzoz)" stroke-width="16" fill="none" />
+        <path d="M 1250 470 L 1250 560" stroke="var(--pipe-egzoz)" stroke-width="16" fill="none" />
+        <circle cx="1320" cy="620" r="60" fill="none" stroke="var(--pipe-egzoz)" stroke-width="10" />
+
+        <!-- Brulor 1 -->
+        <rect x="660" y="150" width="70" height="40" rx="6" fill="#9aa3ad" />
+        <path d="M 695 150 L 675 110 L 695 125 L 715 100 L 705 150 Z" fill="#f2994a" stroke="#c96f1c" stroke-width="2" />
+        <text x="695" y="215" text-anchor="middle" font-size="20" fill="var(--text-secondary)">1. Brulor</text>
+
+        <!-- Brulor 2 -->
+        <rect x="1160" y="150" width="70" height="40" rx="6" fill="#9aa3ad" />
+        <path d="M 1195 150 L 1175 110 L 1195 125 L 1215 100 L 1205 150 Z" fill="#f2994a" stroke="#c96f1c" stroke-width="2" />
+        <text x="1195" y="215" text-anchor="middle" font-size="20" fill="var(--text-secondary)">2. Brulor</text>
+
+        <!-- Baypas sistem kutusu -->
+        <rect x="620" y="540" width="420" height="60" rx="6" fill="none" stroke="var(--text-muted)" stroke-width="3" />
+        <text x="830" y="577" text-anchor="middle" font-size="20" fill="var(--text-secondary)">BAYPAS SISTEM</text>
+
+        <!-- Etiketler: fanlar -->
+        <text x="230" y="700" text-anchor="middle" font-size="16" fill="var(--text-muted)">Hava Fani</text>
+        <text x="1320" y="700" text-anchor="middle" font-size="16" fill="var(--text-muted)">Baca Fani</text>
+      </svg>
+
+      <div class="badge" id="badge-gazSayaci" style="left:50%; top:6%;"></div>
+
+      <div class="badge" id="badge-tavan1" style="left:9%; top:16%;"></div>
+      <div class="badge" id="badge-tavan2" style="left:9%; top:24%;"></div>
+      <div class="badge" id="badge-maden" style="left:9%; top:32%;"></div>
+
+      <div class="badge" id="badge-egzoz1" style="left:44%; top:22%;"></div>
+      <div class="badge" id="badge-egzoz2" style="left:76%; top:22%;"></div>
+
+      <div class="badge" id="badge-gazKlape" style="left:19%; top:70%;"></div>
+      <div class="badge" id="badge-havaKlape" style="left:14%; top:44%;"></div>
+      <div class="badge" id="badge-egzozKlape" style="left:78%; top:52%;"></div>
+
+      <div class="badge" id="badge-firinBasinc" style="left:9%; top:58%;"></div>
+      <div class="badge" id="badge-bacaKlape" style="left:9%; top:66%;"></div>
+      <div class="badge" id="badge-farkBasinc1" style="left:52%; top:66%;"></div>
+      <div class="badge" id="badge-farkBasinc2" style="left:70%; top:44%;"></div>
+
+      <div class="badge" id="badge-bacaUst" style="left:9%; top:74%;"></div>
+      <div class="badge" id="badge-bacaAlt" style="left:9%; top:82%;"></div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:var(--pipe-gaz)"></i> Gaz</span>
+      <span><i style="background:var(--pipe-hava)"></i> Hava</span>
+      <span><i style="background:var(--pipe-egzoz)"></i> Egzoz</span>
+    </div>
+  </main>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="modalTitle"></span>
+        <button class="modal-close" id="modalClose" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="controls">
+        <div class="range-group" id="modalRangeGroup">
+          <button data-hours="1" class="active">Son 1 saat</button>
+          <button data-hours="6">Son 6 saat</button>
+          <button data-hours="24">Son 24 saat</button>
+          <button data-hours="0">Tumu</button>
+        </div>
+      </div>
+      <div id="modalChart"></div>
+    </div>
+  </div>
+
+<script src="/chart.js"></script>
+<script>
+const MACHINE_ID = "Rejen";
+
+// label: kutucuk basligi, tag: alccrline.ts'in topladigi tag_label (KEPServerEX yolu),
+// unit: deger sonuna eklenen birim. Sahada bir kutu yanlis tag'e bagliysa
+// sadece bu satirdaki "tag" degerini duzeltmek yeterli.
+const TAGS = [
+  { key: "tavan1", label: "1.Tavan PV", tag: "Genel Datatlar.1TavanSıcaklığı PV", unit: " °C" },
+  { key: "tavan2", label: "2.Tavan PV", tag: "Genel Datatlar.2 TavanSıcaklığı PV", unit: " °C" },
+  { key: "maden", label: "Maden PV", tag: "Genel Datatlar.MadenSıcaklığı PV", unit: " °C" },
+  { key: "egzoz1", label: "1.Egzoz PV", tag: "Genel Datatlar.1EgzozSıcaklığı PV", unit: " °C" },
+  { key: "egzoz2", label: "2.Egzoz PV", tag: "Genel Datatlar.2EgzozSıcaklığı PV", unit: " °C" },
+  { key: "firinBasinc", label: "Firin Basinc Aktuel", tag: "KalibrasyonDB.Fırın İç Baınç.Value", unit: " mbar" },
+  { key: "farkBasinc1", label: "Fark Basinc 1", tag: "KalibrasyonDB.Farık Baınç1.Value", unit: " mbar" },
+  { key: "farkBasinc2", label: "Fark Basinc 2", tag: "KalibrasyonDB.Farık Baınç2.Value", unit: " mbar" },
+  { key: "bacaKlape", label: "Baca Klapesi Poz.", tag: "Genel Datatlar.BacaDamperPozKontrol_PV", unit: "%" },
+  { key: "gazKlape", label: "Gaz Klape", tag: "Genel Datatlar.GazDamperPozKontrol_PV", unit: "%" },
+  { key: "havaKlape", label: "Hava Klape", tag: "Genel Datatlar.HavaDamperPozKontrol_PV", unit: "%" },
+  { key: "egzozKlape", label: "Egzoz Klape", tag: "Genel Datatlar.EgzozDamperPozKontrol_PV", unit: "%" },
+  { key: "bacaUst", label: "Baca Ust Limit", tag: "Genel Datatlar.BacaDamperÜstTolerans_PV", unit: "%" },
+  { key: "bacaAlt", label: "Baca Alt Limit", tag: "Genel Datatlar.BacaDamperAltTolerans_PV", unit: "%" },
+  { key: "gazSayaci", label: "Dogal Gaz Sayaci", tag: "TüketilenGazMiktarı", unit: " m³" },
+];
+
+for (const t of TAGS) {
+  const el = document.getElementById(`badge-${t.key}`);
+  if (!el) continue;
+  el.innerHTML = `<span class="label">${t.label}</span><span class="value">-</span>`;
+
+  const histBtn = document.createElement("button");
+  histBtn.type = "button";
+  histBtn.className = "hist-btn";
+  histBtn.title = "Gecmis / Grafik";
+  histBtn.textContent = "📈";
+  histBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openHistoryModal(t);
+  });
+  el.appendChild(histBtn);
+}
+
+function fmt(value) {
+  if (value === null || value === undefined) return "-";
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(1) : String(value);
+}
+
+let thresholdByTag = {};
+
+async function loadThresholds() {
+  const res = await fetch("/api/thresholds");
+  const rows = await res.json();
+  thresholdByTag = {};
+  for (const r of rows) {
+    if (r.machine_id === MACHINE_ID) thresholdByTag[r.tag_label] = r;
+  }
+}
+
+async function refresh() {
+  try {
+    const res = await fetch("/api/latest");
+    const rows = await res.json();
+    const valueByTag = {};
+    let newest = 0;
+    for (const r of rows) {
+      if (r.machine_id !== MACHINE_ID) continue;
+      valueByTag[r.tag_label] = r.value;
+      if (r.recorded_at > newest) newest = r.recorded_at;
+    }
+
+    for (const t of TAGS) {
+      const el = document.getElementById(`badge-${t.key}`);
+      if (!el) continue;
+      const valueEl = el.querySelector(".value");
+      const raw = valueByTag[t.tag];
+      valueEl.textContent = raw === undefined ? "-" : fmt(raw) + t.unit;
+
+      const threshold = thresholdByTag[t.tag];
+      const n = Number(raw);
+      const outOfRange =
+        threshold && Number.isFinite(n) &&
+        ((threshold.min_value !== null && n < threshold.min_value) || (threshold.max_value !== null && n > threshold.max_value));
+      el.classList.toggle("alert", !!outOfRange);
+    }
+
+    const stale = newest && Date.now() - newest > 10000;
+    document.getElementById("status").textContent = stale
+      ? "Veri gecikmis (alccrline toplayicisi calisiyor mu?)"
+      : "Son yenileme: " + new Date().toLocaleTimeString("tr-TR");
+  } catch (err) {
+    document.getElementById("status").textContent = "Baglanti hatasi: " + err;
+  }
+}
+
+loadThresholds();
+refresh();
+setInterval(refresh, 2000);
+setInterval(loadThresholds, 30000);
+
+// Gecmis/grafik modali - bir badge'in "📈" butonuna tiklaninca o tag'in
+// gecmis degerlerini ve trend grafigini gosterir. Tanimli Min/Max varsa
+// (bkz. /thresholds.html) sinir disi kalan bolumler grafikte farkli renkte cizilir.
+let currentModalTag = null;
+let modalHours = 1;
+
+function openHistoryModal(t) {
+  currentModalTag = t;
+  document.getElementById("modalTitle").textContent = `${t.label} (${MACHINE_ID}.${t.tag})`;
+  document.getElementById("modalBackdrop").style.display = "flex";
+  loadModalChart();
+}
+
+function closeModal() {
+  document.getElementById("modalBackdrop").style.display = "none";
+  currentModalTag = null;
+}
+
+async function loadModalChart() {
+  if (!currentModalTag) return;
+  const container = document.getElementById("modalChart");
+  container.innerHTML = '<div class="chart-empty">Yukleniyor...</div>';
+  const res = await fetch(
+    `/api/history?machineId=${encodeURIComponent(MACHINE_ID)}&tagLabel=${encodeURIComponent(currentModalTag.tag)}&hours=${modalHours}`
+  );
+  const points = await res.json();
+  container.innerHTML = "";
+  if (points.length === 0) {
+    container.innerHTML = '<div class="chart-empty">Bu tag icin henuz veri yok.</div>';
+    return;
+  }
+  renderTrendChart(container, currentModalTag.label, points, thresholdByTag[currentModalTag.tag]);
+}
+
+document.getElementById("modalClose").addEventListener("click", closeModal);
+document.getElementById("modalBackdrop").addEventListener("click", (e) => {
+  if (e.target.id === "modalBackdrop") closeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModal();
+});
+document.getElementById("modalRangeGroup").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  document.querySelectorAll("#modalRangeGroup button").forEach((b) => b.classList.remove("active"));
+  e.target.classList.add("active");
+  modalHours = Number(e.target.dataset.hours);
+  loadModalChart();
+});
+</script>
+</body>
+</html>

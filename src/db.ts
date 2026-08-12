@@ -46,6 +46,15 @@ db.exec(`
   );
 `);
 
+// last_bucket: "ramp" alarm modunda (bkz. alerts.ts) son bildirilen 100'luk
+// sicaklik dilimi. Tablo daha once olusturulmus kurulumlarda kolon eksik
+// kalabilir, bu yuzden ayrica eklenir - zaten varsa hata yutulur.
+try {
+  db.exec("ALTER TABLE alert_state ADD COLUMN last_bucket INTEGER");
+} catch {
+  // kolon zaten var
+}
+
 const insertReadingStmt = db.prepare(
   "INSERT INTO readings (machine_id, tag_label, value, recorded_at) VALUES (?, ?, ?, ?)"
 );
@@ -107,19 +116,26 @@ export function setThreshold(machineId: string, tagLabel: string, minValue: numb
 export interface AlertState {
   is_alerting: number;
   last_alert_at: number | null;
+  last_bucket: number | null;
 }
 
 const getAlertStateStmt = db.prepare(
-  "SELECT is_alerting, last_alert_at FROM alert_state WHERE machine_id = ? AND tag_label = ?"
+  "SELECT is_alerting, last_alert_at, last_bucket FROM alert_state WHERE machine_id = ? AND tag_label = ?"
 );
 export function getAlertState(machineId: string, tagLabel: string): AlertState | undefined {
   return getAlertStateStmt.get(machineId, tagLabel) as AlertState | undefined;
 }
 
 const setAlertStateStmt = db.prepare(`
-  INSERT INTO alert_state (machine_id, tag_label, is_alerting, last_alert_at) VALUES (?, ?, ?, ?)
-  ON CONFLICT(machine_id, tag_label) DO UPDATE SET is_alerting = excluded.is_alerting, last_alert_at = excluded.last_alert_at
+  INSERT INTO alert_state (machine_id, tag_label, is_alerting, last_alert_at, last_bucket) VALUES (?, ?, ?, ?, ?)
+  ON CONFLICT(machine_id, tag_label) DO UPDATE SET is_alerting = excluded.is_alerting, last_alert_at = excluded.last_alert_at, last_bucket = excluded.last_bucket
 `);
-export function setAlertState(machineId: string, tagLabel: string, isAlerting: boolean, lastAlertAt: number | null) {
-  setAlertStateStmt.run(machineId, tagLabel, isAlerting ? 1 : 0, lastAlertAt);
+export function setAlertState(
+  machineId: string,
+  tagLabel: string,
+  isAlerting: boolean,
+  lastAlertAt: number | null,
+  lastBucket: number | null = null
+) {
+  setAlertStateStmt.run(machineId, tagLabel, isAlerting ? 1 : 0, lastAlertAt, lastBucket);
 }
