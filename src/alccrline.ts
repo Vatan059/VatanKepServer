@@ -69,7 +69,14 @@ function bare(browseName: string): string {
   return browseName.replace(/^\d+:/, "");
 }
 
-async function discoverTags(session: any, nodeId: string, prefix: string, depth: number, out: DiscoveredTag[]) {
+async function discoverTags(
+  session: any,
+  nodeId: string,
+  prefix: string,
+  depth: number,
+  out: DiscoveredTag[],
+  labelCounts: Map<string, number>
+) {
   if (depth > MAX_DEPTH) return;
 
   const browseResult = await session.browse(nodeId);
@@ -85,10 +92,26 @@ async function discoverTags(session: any, nodeId: string, prefix: string, depth:
     const label = prefix ? `${prefix}.${name}` : name;
 
     if (ref.nodeClass === NodeClass.Variable && shouldKeep(label)) {
-      out.push({ label, nodeId: ref.nodeId.toString() });
+      // KEPServerEX/PLC tarafinda ayni isimde IKI FARKLI tag bulunabiliyor (Maden
+      // sicakligi vakasinda oldugu gibi - "MadenSıcaklığı PV" ve "..PV_1" iki ayri
+      // nodeId). Bunu tespit etmeyip ikisini de ayni tag_label ile DB'ye yazarsak
+      // degerleri birbirine karisir (bkz. "TüketilenGazMiktarı" vakasi - biri ~7000
+      // civari sayac, digeri ~50-100 araligi baska bir olcum, ayni etiket altinda
+      // toplanip grafikte birbirine giriyordu). Bu yuzden bir tur ayni etiket
+      // ikinci kez gelirse "_1", ucuncu kez "_2" eklenir - iki farkli nodeId hep
+      // ayri, kararli tag_label alir.
+      const seenCount = labelCounts.get(label) ?? 0;
+      labelCounts.set(label, seenCount + 1);
+      const finalLabel = seenCount === 0 ? label : `${label}_${seenCount}`;
+      if (seenCount > 0) {
+        console.warn(
+          `[alccrline] Tekrarlanan tag adi tespit edildi: "${label}" -> "${finalLabel}" olarak ayristirildi (nodeId=${ref.nodeId.toString()})`
+        );
+      }
+      out.push({ label: finalLabel, nodeId: ref.nodeId.toString() });
     }
     if (ref.nodeClass === NodeClass.Object || ref.nodeClass === NodeClass.Variable) {
-      await discoverTags(session, ref.nodeId.toString(), label, depth + 1, out);
+      await discoverTags(session, ref.nodeId.toString(), label, depth + 1, out, labelCounts);
     }
   }
 }
@@ -128,7 +151,7 @@ async function main() {
       continue;
     }
     const tags: DiscoveredTag[] = [];
-    await discoverTags(session, branchRef.nodeId.toString(), "", 0, tags);
+    await discoverTags(session, branchRef.nodeId.toString(), "", 0, tags, new Map());
     console.log(`[alccrline] ${branch}: ${tags.length} tag bulundu.`);
     machines.push({ id: branch, tags });
   }
