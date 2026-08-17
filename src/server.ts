@@ -2,12 +2,47 @@ import "dotenv/config";
 import express from "express";
 import * as fs from "fs";
 import path from "node:path";
+import { timingSafeEqual } from "node:crypto";
 import { getLatestReadings, getHistory, getMachineIds, getThresholds, setThreshold } from "./db";
 import { groups } from "./machines";
 
 const app = express();
 const PORT = process.env.DASHBOARD_PORT ? Number(process.env.DASHBOARD_PORT) : 3500;
 const ALCCRLINE_STRUCTURE_FILE = path.join(__dirname, "..", "alccrline-structure.json");
+
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+}
+
+// Dashboard'u ag disina (orn. Cloudflare Tunnel ile) acmadan once DASHBOARD_USER/
+// DASHBOARD_PASSWORD .env'de tanimlanmali - yoksa hem canli veriler hem de
+// /api/thresholds POST (alarm sinirlarini degistirme) parolasiz herkese acik kalir.
+// Sadece yerel agda kullanildigi surece bos birakilabilir (geriye donuk uyumluluk
+// icin engellenmiyor, sadece konsola uyari yaziliyor).
+const DASH_USER = process.env.DASHBOARD_USER;
+const DASH_PASS = process.env.DASHBOARD_PASSWORD;
+
+if (DASH_USER && DASH_PASS) {
+  app.use((req, res, next) => {
+    const header = req.headers.authorization ?? "";
+    const [scheme, encoded] = header.split(" ");
+    if (scheme === "Basic" && encoded) {
+      const [user, pass] = Buffer.from(encoded, "base64").toString("utf-8").split(":");
+      if (user && pass && safeEqual(user, DASH_USER) && safeEqual(pass, DASH_PASS)) {
+        next();
+        return;
+      }
+    }
+    res.set("WWW-Authenticate", 'Basic realm="VatanKepServer"');
+    res.status(401).send("Yetkisiz erisim.");
+  });
+} else {
+  console.warn(
+    "[server] DASHBOARD_USER/DASHBOARD_PASSWORD .env'de tanimli degil - dashboard PAROLASIZ acik. Agin disina cikarmadan once mutlaka tanimlayin."
+  );
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "public")));
