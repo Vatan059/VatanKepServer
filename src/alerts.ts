@@ -12,7 +12,7 @@ const REPEAT_MINUTES = process.env.ALERT_REPEAT_MINUTES ? Number(process.env.ALE
 // sicaklik yukselirken (firin isinirken) her RAMP_BUCKET_SIZE derecede bir
 // ilerleme maili gider - boylece "hala dusuk" spam'i olmadan isinma takip edilir.
 const RAMP_BUCKET_SIZE = 100;
-const RAMP_ALERT_TAGS = new Set<string>(["Rejen::Genel Datatlar.MadenSıcaklığı PV"]);
+const RAMP_ALERT_TAGS = new Set<string>(["Rejen::Genel Datatlar.MadenSıcaklığı PV_1"]);
 
 function isRampTag(machineId: string, tagLabel: string): boolean {
   return RAMP_ALERT_TAGS.has(`${machineId}::${tagLabel}`);

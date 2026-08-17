@@ -70,8 +70,7 @@
   main { max-width: 1400px; margin: 0 auto; padding: 16px 24px 40px; }
   #status { color: var(--text-muted); font-size: 12px; margin-bottom: 10px; }
 
-  .stage-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; background: var(--stage-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  .stage-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage-wrap { position: relative; width: 100%; aspect-ratio: 1620 / 971; background: var(--stage-bg) url('/rejen-bg.png') center / cover no-repeat; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 
   .badge { position: absolute; transform: translate(-50%, -50%); background: var(--badge-bg); color: var(--badge-text); border-radius: 6px; padding: 4px 8px; font-size: clamp(9px, 1.1vw, 13px); text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.25); line-height: 1.25; white-space: nowrap; }
   .badge.set { background: var(--badge-bg-set); }
@@ -88,7 +87,6 @@
   .legend i { width: 14px; height: 6px; border-radius: 3px; display: inline-block; }
 
   @media (max-width: 700px) {
-    .stage-wrap { aspect-ratio: 4 / 5; }
     .badge { font-size: 9px; padding: 3px 5px; }
   }
 
@@ -153,61 +151,26 @@
   </header>
   <main>
     <div class="stage-wrap" id="stage">
-      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
-        <!-- Gaz (sari) ana hatti -->
-        <path d="M 300 780 L 300 260 L 700 260" stroke="var(--pipe-gaz)" stroke-width="16" fill="none" />
-        <path d="M 300 780 L 300 640 L 1150 640 L 1150 300 L 1180 300" stroke="var(--pipe-gaz)" stroke-width="16" fill="none" />
+      <div class="badge" id="badge-gazSayaci" style="left:62.96%; top:9.17%;"></div>
 
-        <!-- Hava (mavi) ana hatti -->
-        <circle cx="230" cy="620" r="46" fill="none" stroke="var(--pipe-hava)" stroke-width="10" />
-        <path d="M 230 574 L 230 340 L 660 340" stroke="var(--pipe-hava)" stroke-width="16" fill="none" />
-        <path d="M 230 574 L 230 700 L 1100 700 L 1100 380 L 1170 380" stroke="var(--pipe-hava)" stroke-width="16" fill="none" />
+      <div class="badge" id="badge-tavan1" style="left:30.68%; top:27.70%;"></div>
+      <div class="badge" id="badge-tavan2" style="left:68.02%; top:28.42%;"></div>
+      <div class="badge" id="badge-maden" style="left:30.86%; top:43.87%;"></div>
 
-        <!-- Egzoz (kirmizi/pembe) ana hatti -->
-        <path d="M 700 220 L 640 220 L 640 470 L 1250 470" stroke="var(--pipe-egzoz)" stroke-width="16" fill="none" />
-        <path d="M 1180 260 L 1230 260 L 1230 470" stroke="var(--pipe-egzoz)" stroke-width="16" fill="none" />
-        <path d="M 1250 470 L 1250 560" stroke="var(--pipe-egzoz)" stroke-width="16" fill="none" />
-        <circle cx="1320" cy="620" r="60" fill="none" stroke="var(--pipe-egzoz)" stroke-width="10" />
+      <div class="badge" id="badge-egzoz1" style="left:43.52%; top:27.49%;"></div>
+      <div class="badge" id="badge-egzoz2" style="left:80.12%; top:27.70%;"></div>
 
-        <!-- Brulor 1 -->
-        <rect x="660" y="150" width="70" height="40" rx="6" fill="#9aa3ad" />
-        <path d="M 695 150 L 675 110 L 695 125 L 715 100 L 705 150 Z" fill="#f2994a" stroke="#c96f1c" stroke-width="2" />
-        <text x="695" y="215" text-anchor="middle" font-size="20" fill="var(--text-secondary)">1. Brulor</text>
+      <div class="badge" id="badge-gazKlape" style="left:17.35%; top:26.26%;"></div>
+      <div class="badge" id="badge-havaKlape" style="left:17.35%; top:31.10%;"></div>
+      <div class="badge" id="badge-egzozKlape" style="left:17.35%; top:35.74%;"></div>
 
-        <!-- Brulor 2 -->
-        <rect x="1160" y="150" width="70" height="40" rx="6" fill="#9aa3ad" />
-        <path d="M 1195 150 L 1175 110 L 1195 125 L 1215 100 L 1205 150 Z" fill="#f2994a" stroke="#c96f1c" stroke-width="2" />
-        <text x="1195" y="215" text-anchor="middle" font-size="20" fill="var(--text-secondary)">2. Brulor</text>
+      <div class="badge" id="badge-firinBasinc" style="left:54.57%; top:45.52%;"></div>
+      <div class="badge" id="badge-bacaKlape" style="left:17.35%; top:21.52%;"></div>
+      <div class="badge" id="badge-farkBasinc1" style="left:41.85%; top:60.66%;"></div>
+      <div class="badge" id="badge-farkBasinc2" style="left:17.35%; top:16.89%;"></div>
 
-        <!-- Baypas sistem kutusu -->
-        <rect x="620" y="540" width="420" height="60" rx="6" fill="none" stroke="var(--text-muted)" stroke-width="3" />
-        <text x="830" y="577" text-anchor="middle" font-size="20" fill="var(--text-secondary)">BAYPAS SISTEM</text>
-
-        <!-- Etiketler: fanlar -->
-        <text x="230" y="700" text-anchor="middle" font-size="16" fill="var(--text-muted)">Hava Fani</text>
-        <text x="1320" y="700" text-anchor="middle" font-size="16" fill="var(--text-muted)">Baca Fani</text>
-      </svg>
-
-      <div class="badge" id="badge-gazSayaci" style="left:50%; top:6%;"></div>
-
-      <div class="badge" id="badge-tavan1" style="left:9%; top:16%;"></div>
-      <div class="badge" id="badge-tavan2" style="left:9%; top:24%;"></div>
-      <div class="badge" id="badge-maden" style="left:9%; top:32%;"></div>
-
-      <div class="badge" id="badge-egzoz1" style="left:44%; top:22%;"></div>
-      <div class="badge" id="badge-egzoz2" style="left:76%; top:22%;"></div>
-
-      <div class="badge" id="badge-gazKlape" style="left:19%; top:70%;"></div>
-      <div class="badge" id="badge-havaKlape" style="left:14%; top:44%;"></div>
-      <div class="badge" id="badge-egzozKlape" style="left:78%; top:52%;"></div>
-
-      <div class="badge" id="badge-firinBasinc" style="left:9%; top:58%;"></div>
-      <div class="badge" id="badge-bacaKlape" style="left:9%; top:66%;"></div>
-      <div class="badge" id="badge-farkBasinc1" style="left:52%; top:66%;"></div>
-      <div class="badge" id="badge-farkBasinc2" style="left:70%; top:44%;"></div>
-
-      <div class="badge" id="badge-bacaUst" style="left:9%; top:74%;"></div>
-      <div class="badge" id="badge-bacaAlt" style="left:9%; top:82%;"></div>
+      <div class="badge" id="badge-bacaUst" style="left:19.01%; top:82.94%;"></div>
+      <div class="badge" id="badge-bacaAlt" style="left:19.01%; top:87.33%;"></div>
     </div>
 
     <div class="legend">
@@ -245,7 +208,7 @@ const MACHINE_ID = "Rejen";
 const TAGS = [
   { key: "tavan1", label: "1.Tavan PV", tag: "Genel Datatlar.1TavanSıcaklığı PV", unit: " °C" },
   { key: "tavan2", label: "2.Tavan PV", tag: "Genel Datatlar.2 TavanSıcaklığı PV", unit: " °C" },
-  { key: "maden", label: "Maden PV", tag: "Genel Datatlar.MadenSıcaklığı PV", unit: " °C" },
+  { key: "maden", label: "Maden PV", tag: "Genel Datatlar.MadenSıcaklığı PV_1", unit: " °C" },
   { key: "egzoz1", label: "1.Egzoz PV", tag: "Genel Datatlar.1EgzozSıcaklığı PV", unit: " °C" },
   { key: "egzoz2", label: "2.Egzoz PV", tag: "Genel Datatlar.2EgzozSıcaklığı PV", unit: " °C" },
   { key: "firinBasinc", label: "Firin Basinc Aktuel", tag: "KalibrasyonDB.Fırın İç Baınç.Value", unit: " mbar" },
