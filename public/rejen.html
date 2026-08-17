@@ -134,6 +134,21 @@
   .value-table-note { color: var(--text-muted); font-size: 11px; padding: 4px 2px 0; }
   .tooltip { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--text-primary); pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; }
   .hover-layer { fill: transparent; }
+
+  /* Periyodik rapor modali */
+  .modal.wide { max-width: 1200px; }
+  .report-controls-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .report-controls-row label { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .report-controls-row select { font: inherit; font-size: 12px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); }
+  .report-actions { display: flex; gap: 6px; margin-left: auto; }
+  .report-status { color: var(--text-muted); font-size: 12px; margin: 10px 0; }
+  .report-table-wrap { overflow-x: auto; max-height: 60vh; border: 1px solid var(--border); border-radius: 8px; }
+  .report-table { border-collapse: collapse; font-size: 12px; white-space: nowrap; width: 100%; }
+  .report-table th, .report-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: right; }
+  .report-table thead th { position: sticky; top: 0; background: var(--surface); font-weight: 600; color: var(--text-secondary); z-index: 1; }
+  .report-table th:first-child, .report-table td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 2; }
+  .report-table thead th:first-child { z-index: 3; }
+  .report-table td.alert { color: var(--alarm); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -146,6 +161,7 @@
     <nav>
       <a href="/">Firinlar</a>
       <a href="/history.html?machine=Rejen">Gecmis</a>
+      <a href="#" id="openReportLink">Rapor</a>
       <span id="status">Yukleniyor...</span>
     </nav>
   </header>
@@ -195,6 +211,39 @@
         </div>
       </div>
       <div id="modalChart"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="reportBackdrop">
+    <div class="modal wide">
+      <div class="modal-header">
+        <span>Periyodik Rapor — Tum Tagler (Rejen)</span>
+        <button class="modal-close" id="reportClose" type="button" aria-label="Kapat">×</button>
+      </div>
+      <div class="controls">
+        <div class="report-controls-row">
+          <div class="range-group" id="reportRangeGroup">
+            <button data-hours="1" class="active">Son 1 saat</button>
+            <button data-hours="6">Son 6 saat</button>
+            <button data-hours="24">Son 24 saat</button>
+          </div>
+          <label>Periyot
+            <select id="reportPeriod">
+              <option value="10">10 saniye</option>
+              <option value="30" selected>30 saniye</option>
+              <option value="60">1 dakika</option>
+              <option value="300">5 dakika</option>
+              <option value="600">10 dakika</option>
+            </select>
+          </label>
+          <div class="report-actions">
+            <button class="chart-btn" id="reportCopyBtn" type="button">📋 Kopyala</button>
+            <button class="chart-btn" id="reportExcelBtn" type="button">⬇ Excel</button>
+          </div>
+        </div>
+      </div>
+      <div class="report-status" id="reportStatus"></div>
+      <div class="report-table-wrap" id="reportTableWrap"></div>
     </div>
   </div>
 
@@ -345,6 +394,126 @@ document.getElementById("modalRangeGroup").addEventListener("click", (e) => {
   e.target.classList.add("active");
   modalHours = Number(e.target.dataset.hours);
   loadModalChart();
+});
+
+// Periyodik rapor modali - TAGS'teki (yani gorseldeki) tum tag'lerin, sabit
+// araliklarla (varsayilan 30sn) o ana kadarki son degerini tek tabloda gosterir.
+// Her tag kendi hizinda guncellendigi icin bu hizalama sunucu tarafinda
+// (/api/report, basamak/step fonksiyonu ile) yapiliyor.
+let reportHours = 1;
+let currentReportData = null;
+
+function openReportModal() {
+  document.getElementById("reportBackdrop").style.display = "flex";
+  loadReport();
+}
+
+function closeReportModal() {
+  document.getElementById("reportBackdrop").style.display = "none";
+}
+
+async function loadReport() {
+  const wrap = document.getElementById("reportTableWrap");
+  const status = document.getElementById("reportStatus");
+  status.textContent = "Yukleniyor...";
+  wrap.innerHTML = "";
+  currentReportData = null;
+
+  const periodSeconds = Number(document.getElementById("reportPeriod").value);
+  const qs = new URLSearchParams({
+    machineId: MACHINE_ID,
+    tagLabels: TAGS.map((t) => t.tag).join("|"),
+    periodSeconds: String(periodSeconds),
+    hours: String(reportHours),
+  });
+
+  try {
+    const res = await fetch(`/api/report?${qs}`);
+    const data = await res.json();
+    if (!res.ok) {
+      status.textContent = data.error || "Rapor alinamadi.";
+      return;
+    }
+    if (data.rows.length === 0) {
+      status.textContent = "Bu aralikta veri yok.";
+      return;
+    }
+    currentReportData = data;
+    status.textContent = `${data.rows.length} satir - periyot: ${periodSeconds} sn`;
+    renderReportTable(data);
+  } catch (err) {
+    status.textContent = "Baglanti hatasi: " + err;
+  }
+}
+
+function renderReportTable(data) {
+  const wrap = document.getElementById("reportTableWrap");
+  const table = document.createElement("table");
+  table.className = "report-table";
+
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  headRow.innerHTML = "<th>Zaman</th>" + TAGS.map((t) => `<th>${t.label}${t.unit ? ` (${t.unit.trim()})` : ""}</th>`).join("");
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  // En yeni ustte - sayfadaki diger gecmis tablolariyla tutarli.
+  const rows = data.rows.slice().reverse();
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    const cells = row.values
+      .map((v, i) => {
+        const tag = TAGS[i];
+        const threshold = thresholdByTag[tag.tag];
+        const n = Number(v);
+        const outOfRange =
+          threshold &&
+          Number.isFinite(n) &&
+          ((threshold.min_value !== null && n < threshold.min_value) || (threshold.max_value !== null && n > threshold.max_value));
+        return `<td${outOfRange ? ' class="alert"' : ""}>${v === null ? "-" : fmt(v)}</td>`;
+      })
+      .join("");
+    tr.innerHTML = `<td>${new Date(row.t).toLocaleString("tr-TR")}</td>${cells}`;
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  wrap.innerHTML = "";
+  wrap.appendChild(table);
+}
+
+function reportToExportRows() {
+  if (!currentReportData) return [];
+  const header = ["Zaman", ...TAGS.map((t) => t.label)];
+  const rows = currentReportData.rows.map((row) => [
+    new Date(row.t).toLocaleString("tr-TR"),
+    ...row.values.map((v) => (v === null ? "" : v.toFixed(2).replace(".", ","))),
+  ]);
+  return [header, ...rows];
+}
+
+document.getElementById("openReportLink").addEventListener("click", (e) => {
+  e.preventDefault();
+  openReportModal();
+});
+document.getElementById("reportClose").addEventListener("click", closeReportModal);
+document.getElementById("reportBackdrop").addEventListener("click", (e) => {
+  if (e.target.id === "reportBackdrop") closeReportModal();
+});
+document.getElementById("reportRangeGroup").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  document.querySelectorAll("#reportRangeGroup button").forEach((b) => b.classList.remove("active"));
+  e.target.classList.add("active");
+  reportHours = Number(e.target.dataset.hours);
+  loadReport();
+});
+document.getElementById("reportPeriod").addEventListener("change", loadReport);
+document.getElementById("reportCopyBtn").addEventListener("click", (e) =>
+  copyRowsToClipboard(reportToExportRows(), e.currentTarget)
+);
+document.getElementById("reportExcelBtn").addEventListener("click", () => downloadCsv(reportToExportRows(), "Rejen_Rapor"));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeReportModal();
 });
 </script>
 </body>

@@ -55,6 +55,63 @@ app.get("/api/history", (req, res) => {
   res.json(getHistory(machineId, tagLabel, sinceMs));
 });
 
+// Periyodik "rapor" tablosu: birden fazla tag'in, sabit araliklarla (orn. her 30
+// saniyede bir) o ana kadarki en son degerini tek satirda gosterir (basamak/step
+// fonksiyonu - bir sonraki okuma gelene kadar onceki deger gecerli sayilir).
+// Tagler arasi zaman damgalari hic uyusmadigi icin (her biri kendi hizinda OPC
+// event'i ile guncelleniyor) boyle bir "hizalanmis" tabloya ihtiyac var.
+app.get("/api/report", (req, res) => {
+  const machineId = String(req.query.machineId ?? "");
+  const tagLabels = String(req.query.tagLabels ?? "")
+    .split("|")
+    .filter(Boolean);
+  const periodSeconds = req.query.periodSeconds ? Number(req.query.periodSeconds) : 30;
+  const hours = req.query.hours ? Number(req.query.hours) : 1;
+
+  if (!machineId || tagLabels.length === 0 || !Number.isFinite(periodSeconds) || periodSeconds <= 0) {
+    res.status(400).json({ error: "machineId, tagLabels ve periodSeconds gerekli" });
+    return;
+  }
+  if (!Number.isFinite(hours) || hours <= 0) {
+    res.status(400).json({ error: "hours pozitif olmali (rapor 'Tumu' araligini desteklemiyor)" });
+    return;
+  }
+
+  const now = Date.now();
+  const sinceMs = now - hours * 3600_000;
+  const periodMs = periodSeconds * 1000;
+  const bucketCount = Math.floor((now - sinceMs) / periodMs) + 1;
+  const MAX_BUCKETS = 5000;
+  if (bucketCount > MAX_BUCKETS) {
+    res.status(400).json({
+      error: `Bu araliktaki periyot sayisi (${bucketCount}) cok fazla (limit ${MAX_BUCKETS}) - daha kisa bir sure secin veya periyodu buyutun.`,
+    });
+    return;
+  }
+
+  // getHistory varsayilani 3000 satirla sinirli - rapor icin gerektigi kadarini
+  // (secilen saat araligindaki tum ham okumalari) almak icin genis bir limit veriliyor.
+  const perTagHistory = tagLabels.map((tag) => getHistory(machineId, tag, sinceMs, 500_000));
+  const pointers = perTagHistory.map(() => 0);
+
+  const rows: { t: number; values: (number | null)[] }[] = [];
+  for (let i = 0; i < bucketCount; i++) {
+    const bucketEnd = sinceMs + i * periodMs;
+    const values: (number | null)[] = [];
+    for (let ti = 0; ti < tagLabels.length; ti++) {
+      const hist = perTagHistory[ti];
+      let p = pointers[ti];
+      while (p + 1 < hist.length && hist[p + 1].recorded_at <= bucketEnd) p++;
+      pointers[ti] = p;
+      const point = hist[p];
+      values.push(point && point.recorded_at <= bucketEnd && point.value !== null ? point.value : null);
+    }
+    rows.push({ t: bucketEnd, values });
+  }
+
+  res.json({ periodSeconds, tagLabels, rows });
+});
+
 app.get("/api/thresholds", (_req, res) => {
   res.json(getThresholds());
 });
