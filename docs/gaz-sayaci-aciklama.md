@@ -11,12 +11,15 @@ akışı (~60-130 birim) gösteriyor. Brülör devreye girip çıktıkça bu de�
 de onunla birlikte anında sıçrıyor - bu, fırının normal ateşleme
 döngüsünün beklenen bir sonucu.
 
-Bunu 2026-08-21'de brülör ana alev sinyaliyle (1B_AnaAlev / 2B_AnaAlev)
-saniye hassasiyetinde karşılaştırarak doğruladık: alev yandığı anda
-gösterge yüksek banda, alev söndüğü anda düşük banda geçiyor, defalarca
-tekrarlanan bir örüntüyle.
+Bunu 2026-08-21'de brülör ana alev sinyaliyle saniye hassasiyetinde
+karşılaştırarak doğruladık: alev yandığı anda gösterge yüksek banda,
+alev söndüğü anda düşük banda geçiyor, defalarca tekrarlanan bir
+örüntüyle. Bu korelasyon özellikle **2. brülörün** ana alev sinyali
+(`2B_AnaAlev`) için geçerli - 1. brülörün sinyali (`1B_AnaAlev`)
+gözlem süresince hep "1" kaldığı için (muhtemelen ayrı bir hazır/
+permissive sinyali, ateşleme durumu değil) korelasyona dahil edilmedi.
 
-Bu yüzden dashboard'a artık göstergenin yanına brülörün o anki
+Bu yüzden dashboard'a artık göstergenin yanına 2. brülörün o anki
 durumunu (🔥 Alevli / Boşta) da ekledik - değerin neden değiştiğini
 aynı anda görebilirsiniz.
 
