@@ -78,6 +78,7 @@
   .badge .value { display: block; font-weight: 700; font-variant-numeric: tabular-nums; }
   .badge.alert .value { color: var(--alarm); }
   .badge.alert .value::after { content: " ⚠"; }
+  .badge .flame { display: block; font-size: 0.75em; opacity: 0.8; margin-top: 1px; }
 
   .hist-btn { position: absolute; top: -8px; right: -8px; width: 18px; height: 18px; border-radius: 50%; border: none; background: var(--series); color: #fff; font-size: 10px; line-height: 18px; padding: 0; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
   .hist-btn:hover { filter: brightness(1.12); }
@@ -269,13 +270,14 @@ const TAGS = [
   { key: "egzozKlape", label: "Egzoz Klape", tag: "Genel Datatlar.EgzozDamperPozKontrol_PV", unit: "%" },
   { key: "bacaUst", label: "Baca Ust Limit", tag: "Genel Datatlar.BacaDamperÜstTolerans_PV", unit: "%" },
   { key: "bacaAlt", label: "Baca Alt Limit", tag: "Genel Datatlar.BacaDamperAltTolerans_PV", unit: "%" },
-  { key: "gazSayaci", label: "Dogal Gaz Sayaci", tag: "TüketilenGazMiktarı", unit: " m³" },
+  { key: "gazSayaci", label: "Dogal Gaz Sayaci", tag: "TüketilenGazMiktarı", unit: " m³", flameTags: ["1B_AnaAlev", "2B_AnaAlev"] },
 ];
 
 for (const t of TAGS) {
   const el = document.getElementById(`badge-${t.key}`);
   if (!el) continue;
-  el.innerHTML = `<span class="label">${t.label}</span><span class="value">-</span>`;
+  const flameSpan = t.flameTags ? `<span class="flame">-</span>` : "";
+  el.innerHTML = `<span class="label">${t.label}</span><span class="value">-</span>${flameSpan}`;
 
   const histBtn = document.createElement("button");
   histBtn.type = "button";
@@ -331,6 +333,14 @@ async function refresh() {
         threshold && Number.isFinite(n) &&
         ((threshold.min_value !== null && n < threshold.min_value) || (threshold.max_value !== null && n > threshold.max_value));
       el.classList.toggle("alert", !!outOfRange);
+
+      if (t.flameTags) {
+        const flameEl = el.querySelector(".flame");
+        const anyUndefined = t.flameTags.some((ft) => valueByTag[ft] === undefined);
+        const alevli = t.flameTags.some((ft) => Number(valueByTag[ft]) === 1);
+        if (flameEl) flameEl.textContent = anyUndefined ? "" : alevli ? "🔥 Alevli" : "Boşta";
+        el.classList.toggle("set", alevli);
+      }
     }
 
     const stale = newest && Date.now() - newest > 10000;
