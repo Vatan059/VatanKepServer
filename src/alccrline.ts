@@ -46,7 +46,19 @@ const WANTED_TOP_GROUPS = ["KalibrasyonDB", "DB6000 - Alarmlar", "Genel Datatlar
 // Firin kokunde (klasorsuz, dogrudan) duran ama gerekli olan birkac tag -
 // bunlar WANTED_TOP_GROUPS'taki bir klasorun altinda degil, bu yuzden ayrica
 // isimle allowlist'e alinmalari gerekiyor.
-const TOP_LEVEL_EXTRA = ["Fark Baınç 1", "Fark Baınç 2", "Fırın İç basınç", "TüketilenGazMiktarı", "TüketilenHavaMiktarı"];
+// 1B_AnaAlev/2B_AnaAlev/YakmaFanıStartBiti: TüketilenGazMiktarı'nin 2 haneli/4
+// haneli bandlar arasinda sicramasinin brulor atesleme donguleriyle mi ortusup
+// ortusmedigini gormek icin eklendi (bkz. gaz sayaci tutarsizligi teshisi).
+const TOP_LEVEL_EXTRA = [
+  "Fark Baınç 1",
+  "Fark Baınç 2",
+  "Fırın İç basınç",
+  "TüketilenGazMiktarı",
+  "TüketilenHavaMiktarı",
+  "1B_AnaAlev",
+  "2B_AnaAlev",
+  "YakmaFanıStartBiti",
+];
 
 // Genel Datatlar/GenelDatalar icinde gercek proses verisi olmayan, gurultu
 // sayilan alt dizeler (sistem saati, deneme/test alanlari).
