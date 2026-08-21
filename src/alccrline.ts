@@ -206,7 +206,8 @@ async function main() {
       monitoredItem.on("changed", (dataValue: DataValue) => {
         const value = dataValue.value.value;
         const now = Date.now();
-        const numericValue = typeof value === "number" ? value : null;
+        const numericValue =
+          typeof value === "number" ? value : typeof value === "boolean" ? (value ? 1 : 0) : null;
         recordReading(machine.id, tag.label, numericValue, now);
         checkThresholdAndAlert(machine.id, tag.label, numericValue, now).catch((err) =>
           console.error(`[alccrline] ${machine.id}.${tag.label} kontrol hatasi:`, err)
