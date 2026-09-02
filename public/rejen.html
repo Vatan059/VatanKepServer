@@ -70,15 +70,56 @@
   main { max-width: 1400px; margin: 0 auto; padding: 16px 24px 40px; }
   #status { color: var(--text-muted); font-size: 12px; margin-bottom: 10px; }
 
-  .stage-wrap { position: relative; width: 100%; aspect-ratio: 1620 / 971; background: var(--stage-bg) url('/rejen-bg.png') center / cover no-repeat; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  /* Ust ozet kartlari: gaz sayaci / toplam gaz / hesaplanan debi - diyagramin
+     disinda, normal akista (absolute konumlandirma degil) - icerik ne kadar
+     genis olursa olsun tasma/ust uste binme riski olmaz. */
+  .top-stats { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 22px; min-width: 190px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .stat-card.tone-green { background: color-mix(in srgb, #3fae63 16%, var(--surface)); }
+  .stat-card.tone-blue { background: color-mix(in srgb, var(--series) 14%, var(--surface)); }
+  .stat-card.tone-amber { background: color-mix(in srgb, #d99a2b 16%, var(--surface)); }
+  .stat-card .label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+  .stat-card .value { display: block; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-card .flame { display: block; font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .stat-card .caption { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .stat-card.alert .value { color: var(--alarm); }
+  .stat-card.alert .value::after { content: " ⚠"; }
 
-  .badge { position: absolute; transform: translate(-50%, -50%); background: var(--badge-bg); color: var(--badge-text); border-radius: 6px; padding: 4px 8px; font-size: clamp(9px, 1.1vw, 13px); text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.25); line-height: 1.25; white-space: nowrap; }
+  /* Diyagram (borulu sema) + sol taraftaki gruplu bilgi panelleri */
+  .dashboard-layout { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .side-panels { display: flex; flex-direction: column; gap: 14px; width: 260px; flex: 0 0 260px; }
+  .stage-wrap { position: relative; flex: 1 1 420px; min-width: 320px; aspect-ratio: 1330 / 790; background: var(--stage-bg) url('/rejen-bg.png') center / cover no-repeat; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+
+  .panel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .panel-card h3 { margin: 0 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
+
+  /* .panel-row: etiket (sol, renkli pill) + deger (sag, kutu) yan yana - Sicaklik
+     Degerleri / Limit Bilgileri gibi coklu-satirli panellerde kullanilir. */
+  .panel-row { position: relative; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .panel-row:last-child { margin-bottom: 0; }
+  .panel-row .label { flex: 0 0 auto; background: #f3d67a; color: #4a3a05; font-weight: 600; font-size: 12px; padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
+  .panel-row .value { flex: 1 1 auto; background: var(--badge-bg); color: var(--badge-text); font-weight: 700; font-size: 13px; padding: 6px 10px; border-radius: 8px; text-align: center; font-variant-numeric: tabular-nums; }
+  .panel-row.alert .value { color: var(--alarm); }
+  .panel-row.alert .value::after { content: " ⚠"; }
+
+  /* .panel-block: etiket ustte (duz metin) + tek buyuk deger kutusu altta -
+     Yanma Kontrolu / Basinc Bilgileri gibi tek-degerli panellerde kullanilir. */
+  .panel-block { position: relative; }
+  .panel-block .label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .panel-block .value { display: block; background: var(--badge-bg); color: var(--badge-text); font-weight: 700; font-size: 20px; text-align: center; padding: 10px; border-radius: 8px; font-variant-numeric: tabular-nums; }
+  .panel-block.tone-green .value { background: var(--badge-bg-set); }
+  .panel-block.alert .value { color: var(--alarm); }
+  .panel-block.alert .value::after { content: " ⚠"; }
+
+  /* Diyagram uzerine sabit konumla yerlestirilen kucuk kutucuklar (borularin
+     tam uzerindeki olcum noktalari) - sadece gercekten o hatta ait olanlar. */
+  .badge { position: absolute; transform: translate(-50%, -50%); min-width: 108px; background: var(--surface); border: 1px solid var(--border); color: var(--badge-text); border-radius: 10px; padding: 9px 16px; font-size: clamp(13px, 1.5vw, 17px); text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.18); line-height: 1.35; white-space: nowrap; }
   .badge.set { background: var(--badge-bg-set); }
-  .badge .label { display: block; font-size: 0.8em; opacity: 0.75; }
-  .badge .value { display: block; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .badge .label { display: block; font-size: 0.72em; font-weight: 500; color: var(--text-secondary); margin-bottom: 2px; }
+  .badge .value { display: block; font-weight: 700; font-size: 1.15em; font-variant-numeric: tabular-nums; }
   .badge.alert .value { color: var(--alarm); }
   .badge.alert .value::after { content: " ⚠"; }
-  .badge .flame { display: block; font-size: 0.75em; opacity: 0.8; margin-top: 1px; }
+  .badge .flame { display: block; font-size: 0.7em; opacity: 0.8; margin-top: 2px; }
 
   .hist-btn { position: absolute; top: -8px; right: -8px; width: 18px; height: 18px; border-radius: 50%; border: none; background: var(--series); color: #fff; font-size: 10px; line-height: 18px; padding: 0; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
   .hist-btn:hover { filter: brightness(1.12); }
@@ -88,7 +129,7 @@
   .legend i { width: 14px; height: 6px; border-radius: 3px; display: inline-block; }
 
   @media (max-width: 700px) {
-    .badge { font-size: 9px; padding: 3px 5px; }
+    .badge { font-size: 11px; padding: 6px 10px; min-width: 84px; }
   }
 
   /* Gecmis/grafik modali */
@@ -167,27 +208,46 @@
     </nav>
   </header>
   <main>
-    <div class="stage-wrap" id="stage">
-      <div class="badge" id="badge-gazSayaci" style="left:64.32%; top:7.93%;"></div>
+    <div class="top-stats">
+      <div class="stat-card tone-green" id="badge-gazSayaci"></div>
+      <div class="stat-card tone-blue" id="badge-gazToplam"></div>
+      <div class="stat-card tone-amber" id="badge-gazDebiHesap"></div>
+    </div>
 
-      <div class="badge" id="badge-tavan1" style="left:18.02%; top:17.30%;"></div>
-      <div class="badge" id="badge-tavan2" style="left:18.02%; top:22.04%;"></div>
-      <div class="badge" id="badge-maden" style="left:18.02%; top:26.78%;"></div>
+    <div class="dashboard-layout">
+      <aside class="side-panels">
+        <div class="panel-card">
+          <h3>Sıcaklık Değerleri</h3>
+          <div class="panel-row" id="badge-tavan1"></div>
+          <div class="panel-row" id="badge-tavan2"></div>
+          <div class="panel-row" id="badge-maden"></div>
+        </div>
+        <div class="panel-card">
+          <h3>Yanma Kontrolü</h3>
+          <div class="panel-block tone-green" id="badge-bacaKlape"></div>
+        </div>
+        <div class="panel-card">
+          <h3>Basınç Bilgileri</h3>
+          <div class="panel-block" id="badge-firinBasinc"></div>
+        </div>
+        <div class="panel-card">
+          <h3>Limit Bilgileri</h3>
+          <div class="panel-row" id="badge-bacaUst"></div>
+          <div class="panel-row" id="badge-bacaAlt"></div>
+        </div>
+      </aside>
 
-      <div class="badge" id="badge-egzoz1" style="left:30.71%; top:27.79%;"></div>
-      <div class="badge" id="badge-egzoz2" style="left:66.34%; top:27.36%;"></div>
+      <div class="stage-wrap" id="stage">
+        <div class="badge" id="badge-egzoz1" style="left:15.98%; top:24.03%;"></div>
+        <div class="badge" id="badge-egzoz2" style="left:59.38%; top:23.51%;"></div>
 
-      <div class="badge" id="badge-gazKlape" style="left:31.02%; top:43.96%;"></div>
-      <div class="badge" id="badge-havaKlape" style="left:30.46%; top:60.54%;"></div>
-      <div class="badge" id="badge-egzozKlape" style="left:82.57%; top:75.65%;"></div>
+        <div class="badge" id="badge-gazKlape" style="left:16.35%; top:43.91%;"></div>
+        <div class="badge" id="badge-havaKlape" style="left:30.08%; top:58.23%;"></div>
+        <div class="badge" id="badge-egzozKlape" style="left:79.14%; top:82.86%;"></div>
 
-      <div class="badge" id="badge-firinBasinc" style="left:19.41%; top:61.20%;"></div>
-      <div class="badge" id="badge-bacaKlape" style="left:12.87%; top:49.97%;"></div>
-      <div class="badge" id="badge-farkBasinc1" style="left:59.42%; top:59.32%;"></div>
-      <div class="badge" id="badge-farkBasinc2" style="left:80.16%; top:59.38%;"></div>
-
-      <div class="badge" id="badge-bacaUst" style="left:19.01%; top:82.94%;"></div>
-      <div class="badge" id="badge-bacaAlt" style="left:19.01%; top:87.33%;"></div>
+        <div class="badge" id="badge-farkBasinc1" style="left:50.95%; top:62.78%;"></div>
+        <div class="badge" id="badge-farkBasinc2" style="left:76.21%; top:62.86%;"></div>
+      </div>
     </div>
 
     <div class="legend">
@@ -270,14 +330,17 @@ const TAGS = [
   { key: "egzozKlape", label: "Egzoz Klape", tag: "Genel Datatlar.EgzozDamperPozKontrol_PV", unit: "%" },
   { key: "bacaUst", label: "Baca Ust Limit", tag: "Genel Datatlar.BacaDamperÜstTolerans_PV", unit: "%" },
   { key: "bacaAlt", label: "Baca Alt Limit", tag: "Genel Datatlar.BacaDamperAltTolerans_PV", unit: "%" },
-  { key: "gazSayaci", label: "Dogal Gaz Sayaci", tag: "TüketilenGazMiktarı", unit: " m³", flameTags: ["2B_AnaAlev"] },
+  { key: "gazSayaci", label: "Dogal Gaz Sayaci", tag: "TüketilenGazMiktarı", unit: " m³", flameTags: ["2B_AnaAlev"], caption: "Anlık" },
+  { key: "gazToplam", label: "Toplam Gaz (Kumulatif)", tag: "Kalıcı_Datalar.GazToplamMetreKüp", unit: " m³" },
+  { key: "gazDebiHesap", label: "1 Saat / 4 (Hesap)", tag: "Hesaplanan.GazSaatlikDebi", unit: "", caption: "10 dk bazlı, gaz_sayaci_okumalar_formul.xlsx" },
 ];
 
 for (const t of TAGS) {
   const el = document.getElementById(`badge-${t.key}`);
   if (!el) continue;
   const flameSpan = t.flameTags ? `<span class="flame">-</span>` : "";
-  el.innerHTML = `<span class="label">${t.label}</span><span class="value">-</span>${flameSpan}`;
+  const captionSpan = t.caption ? `<span class="caption">${t.caption}</span>` : "";
+  el.innerHTML = `<span class="label">${t.label}</span><span class="value">-</span>${flameSpan}${captionSpan}`;
 
   const histBtn = document.createElement("button");
   histBtn.type = "button";
