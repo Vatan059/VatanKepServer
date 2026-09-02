@@ -8,6 +8,7 @@
 //   - DB6000 - Alarmlar.*           (alarm bitleri)
 //   - Genel Datatlar.* / GenelDatalar.*  (sicaklik PV, klape/damper pozisyonu, tarih/saat haric)
 //   - ScadaDB.*                     (Dinlendirme_A/B icin pota pozisyonu/durum bilgileri)
+//   - Kalıcı_Datalar.*              (KALICI_DATALAR_EXTRA'daki birkac tag - orn. kumulatif gaz sayaci)
 //   - TOP_LEVEL_EXTRA               (firin kokunde dogrudan duran birkac gaz sayaci/basinc tag'i)
 // Kesif sonucu ayni zamanda alccrline-structure.json'a yazilir ki dashboard
 // (server.ts) hangi makine/tag'lerin var oldugunu bilebilsin.
@@ -34,6 +35,15 @@ const BRANCHES = ["Rejen", "Dinlendirme_A", "Dinlendirme_B"];
 const MAX_DEPTH = 10;
 const STRUCTURE_FILE = path.join(__dirname, "..", "alccrline-structure.json");
 
+// gaz_sayaci_okumalar_formul.xlsx'teki hesap zincirinin ayni birebir uygulanmasi:
+// Fark(m3) -> *2,1 (sabit) -> okuma dk farkina bol -> *60 (1 Saat) -> /4 (1 Saat/4).
+// Kaynak sayac GAZ_TOPLAM_TAG, hesaplanan deger GAZ_DEBI_HESAP_TAG olarak normal
+// bir tag gibi kaydedilir (recordReading) - boylece dashboard/gecmis/rapor tum
+// mekanizmalar degisiklik yapmadan bu tag'i de gosterebilir.
+const GAZ_TOPLAM_TAG = "Kalıcı_Datalar.GazToplamMetreKüp";
+const GAZ_DEBI_HESAP_TAG = "Hesaplanan.GazSaatlikDebi";
+const GAZ_DEBI_HESAP_INTERVAL_MS = 10 * 60 * 1000;
+
 interface DiscoveredTag {
   label: string;
   nodeId: string;
@@ -41,7 +51,7 @@ interface DiscoveredTag {
 
 // Furin dogrudan altinda sadece bu isimdeki klasorlere inilir - geri kalani
 // (brulor/timer sira kontrolu, iletisim paketleri vb.) hic taranmaz.
-const WANTED_TOP_GROUPS = ["KalibrasyonDB", "DB6000 - Alarmlar", "Genel Datatlar", "GenelDatalar", "ScadaDB"];
+const WANTED_TOP_GROUPS = ["KalibrasyonDB", "DB6000 - Alarmlar", "Genel Datatlar", "GenelDatalar", "ScadaDB", "Kalıcı_Datalar"];
 
 // Firin kokunde (klasorsuz, dogrudan) duran ama gerekli olan birkac tag -
 // bunlar WANTED_TOP_GROUPS'taki bir klasorun altinda degil, bu yuzden ayrica
@@ -64,6 +74,11 @@ const TOP_LEVEL_EXTRA = [
 // sayilan alt dizeler (sistem saati, deneme/test alanlari).
 const GENEL_DATATLAR_EXCLUDE = ["SistemGercekZamanSaati", "denemetarih", "FarkTarih"];
 
+// Kalıcı_Datalar altinda cogunlukla program bazli tarih/timer dokumu var (1-6
+// arasi her program icin 8 alt alan) - bunlar proses izleme acisindan gurultu.
+// Sadece asagidaki, gercekten anlamli olan tag'ler toplanir.
+const KALICI_DATALAR_EXTRA = ["Kalıcı_Datalar.GazToplamMetreKüp"];
+
 function shouldKeep(label: string): boolean {
   if (label.startsWith("DB6000 - Alarmlar.")) return true;
   if (/^KalibrasyonDB\..*\.Value$/.test(label)) return true;
@@ -71,6 +86,7 @@ function shouldKeep(label: string): boolean {
     return !GENEL_DATATLAR_EXCLUDE.some((ex) => label.includes(ex));
   }
   if (label.startsWith("ScadaDB.")) return true;
+  if (label.startsWith("Kalıcı_Datalar.")) return KALICI_DATALAR_EXTRA.includes(label);
   if (TOP_LEVEL_EXTRA.includes(label)) return true;
   return false;
 }
@@ -194,6 +210,8 @@ async function main() {
   subscription.on("started", () => console.log(`[alccrline] Subscription basladi (id=${subscription.subscriptionId}).`));
   subscription.on("terminated", () => console.log("[alccrline] Subscription sonlandi."));
 
+  const currentGazToplam = new Map<string, number>();
+
   for (const machine of machines) {
     for (const tag of machine.tags) {
       const monitoredItem = ClientMonitoredItem.create(
@@ -212,6 +230,9 @@ async function main() {
         checkThresholdAndAlert(machine.id, tag.label, numericValue, now).catch((err) =>
           console.error(`[alccrline] ${machine.id}.${tag.label} kontrol hatasi:`, err)
         );
+        if (tag.label === GAZ_TOPLAM_TAG && typeof numericValue === "number") {
+          currentGazToplam.set(machine.id, numericValue);
+        }
       });
 
       monitoredItem.on("err", (message: string) => {
@@ -219,6 +240,23 @@ async function main() {
       });
     }
   }
+
+  const gazDebiSnapshot = new Map<string, { value: number; at: number }>();
+  setInterval(() => {
+    const now = Date.now();
+    for (const [machineId, current] of currentGazToplam) {
+      const prev = gazDebiSnapshot.get(machineId);
+      if (prev) {
+        const farkM3 = current - prev.value;
+        const farkDk = (now - prev.at) / 60000;
+        if (farkDk > 0) {
+          const hesap = ((farkM3 * 2.1) / farkDk) * 60 / 4;
+          recordReading(machineId, GAZ_DEBI_HESAP_TAG, hesap, now);
+        }
+      }
+      gazDebiSnapshot.set(machineId, { value: current, at: now });
+    }
+  }, GAZ_DEBI_HESAP_INTERVAL_MS);
 
   process.on("SIGINT", async () => {
     console.log("\n[alccrline] Kapatiliyor...");
