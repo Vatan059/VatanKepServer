@@ -340,16 +340,15 @@ const TAGS = [
   { key: "bacaAlt", label: "Baca Alt Limit", tag: "Genel Datatlar.BacaDamperAltTolerans_PV", unit: "%" },
   { key: "gazSayaci", label: "Dogal Gaz Sayaci", tag: "TüketilenGazMiktarı", unit: " m³", flameTags: ["2B_AnaAlev"], caption: "Anlık" },
   { key: "gazToplam", label: "Toplam Gaz (Kumulatif)", tag: "Kalıcı_Datalar.GazToplamMetreKüp", unit: " m³" },
-  { key: "gazDebiHesap", label: "1 Saat / 4 (Hesap)", tag: "Hesaplanan.GazSaatlikDebi", unit: "", caption: "10 dk bazlı, gaz_sayaci_okumalar_formul.xlsx" },
+  { key: "gazDebiHesap", label: "Gaz Tüketim Miktarı", tag: "Hesaplanan.GazSaatlikDebi", unit: "", caption: "10 dk bazlı, gaz_sayaci_okumalar_formul.xlsx" },
 ];
 
 for (const t of TAGS) {
   const el = document.getElementById(`badge-${t.key}`);
   if (!el) continue;
-  const labelId = t.key === "gazDebiHesap" ? ' id="gazDebiHesapLabel"' : "";
   const flameSpan = t.flameTags ? `<span class="flame">-</span>` : "";
   const captionSpan = t.caption ? `<span class="caption">${t.caption}</span>` : "";
-  el.innerHTML = `<span class="label"${labelId}>${t.label}</span><span class="value">-</span>${flameSpan}${captionSpan}`;
+  el.innerHTML = `<span class="label">${t.label}</span><span class="value">-</span>${flameSpan}${captionSpan}`;
 
   const histBtn = document.createElement("button");
   histBtn.type = "button";
@@ -367,6 +366,10 @@ for (const t of TAGS) {
 // degistirebilmek icin iki kucuk sayi girisi ekleniyor. Deger degisince
 // /api/gaz-formula-params'a kaydedilir; alccrline.ts bir sonraki 10 dk'lik
 // hesapta bu yeni degerleri okur.
+// Su anki carpan1/carpan2 - "Gaz Tüketim Miktarı" sutununun gecmis rapor
+// tablosunda hangi parametrelerle hesaplandigini gostermek icin (bkz. renderReportTable).
+let currentFormulaParams = { carpan1: null, carpan2: null };
+
 const gazDebiHesapEl = document.getElementById("badge-gazDebiHesap");
 if (gazDebiHesapEl) {
   const paramsRow = document.createElement("div");
@@ -385,20 +388,13 @@ if (gazDebiHesapEl) {
   // Input'a tiklayinca hist-btn/modal acilmasin diye tiklamalar burada durduruluyor.
   paramsRow.addEventListener("click", (e) => e.stopPropagation());
 
-  function updateGazDebiHesapLabel(carpan2) {
-    const labelEl = document.getElementById("gazDebiHesapLabel");
-    const n = Number(carpan2);
-    const text = Number.isFinite(n) ? (Number.isInteger(n) ? String(n) : n.toFixed(1)) : String(carpan2);
-    if (labelEl) labelEl.textContent = `1 Saat / ${text} (Hesap)`;
-  }
-
   async function loadFormulaParams() {
     try {
       const res = await fetch("/api/gaz-formula-params");
       const data = await res.json();
       carpan1Input.value = data.carpan1;
       carpan2Input.value = data.carpan2;
-      updateGazDebiHesapLabel(data.carpan2);
+      currentFormulaParams = data;
     } catch (err) {
       console.error("gaz-formula-params yuklenemedi:", err);
     }
@@ -413,7 +409,7 @@ if (gazDebiHesapEl) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [key]: n }),
       });
-      if (key === "carpan2") updateGazDebiHesapLabel(n);
+      currentFormulaParams = { ...currentFormulaParams, [key]: n };
       saveHint.classList.add("show");
       clearTimeout(saveHint._hideTimer);
       saveHint._hideTimer = setTimeout(() => saveHint.classList.remove("show"), 1500);
@@ -593,6 +589,17 @@ async function loadReport() {
   }
 }
 
+// "Gaz Tüketim Miktarı" sutununun basligina, o an gecerli carpan1/carpan2
+// degerlerini kucuk bir not olarak ekler - kullanici parametreleri
+// degistirdiginde rapordaki degerlerin hangi hesaba dayandigini anlayabilsin.
+function reportColumnHeaderHtml(t) {
+  const unitSuffix = t.unit ? ` (${t.unit.trim()})` : "";
+  if (t.key !== "gazDebiHesap" || currentFormulaParams.carpan1 === null) {
+    return `${t.label}${unitSuffix}`;
+  }
+  return `${t.label}${unitSuffix}<br><span style="font-weight:400;font-size:10px;color:var(--text-muted)">×${currentFormulaParams.carpan1} ÷${currentFormulaParams.carpan2}</span>`;
+}
+
 function renderReportTable(data) {
   const wrap = document.getElementById("reportTableWrap");
   const table = document.createElement("table");
@@ -600,7 +607,7 @@ function renderReportTable(data) {
 
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  headRow.innerHTML = "<th>Zaman</th>" + TAGS.map((t) => `<th>${t.label}${t.unit ? ` (${t.unit.trim()})` : ""}</th>`).join("");
+  headRow.innerHTML = "<th>Zaman</th>" + TAGS.map((t) => `<th>${reportColumnHeaderHtml(t)}</th>`).join("");
   thead.appendChild(headRow);
   table.appendChild(thead);
 
@@ -631,7 +638,14 @@ function renderReportTable(data) {
 
 function reportToExportRows() {
   if (!currentReportData) return [];
-  const header = ["Zaman", ...TAGS.map((t) => t.label)];
+  const header = [
+    "Zaman",
+    ...TAGS.map((t) =>
+      t.key === "gazDebiHesap" && currentFormulaParams.carpan1 !== null
+        ? `${t.label} (×${currentFormulaParams.carpan1} ÷${currentFormulaParams.carpan2})`
+        : t.label
+    ),
+  ];
   const rows = currentReportData.rows.map((row) => [
     new Date(row.t).toLocaleString("tr-TR"),
     ...row.values.map((v) => (v === null ? "" : v.toFixed(2).replace(".", ","))),
