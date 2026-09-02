@@ -3,7 +3,8 @@ import express from "express";
 import * as fs from "fs";
 import path from "node:path";
 import { timingSafeEqual } from "node:crypto";
-import { getLatestReadings, getHistory, getMachineIds, getThresholds, setThreshold } from "./db";
+import { getLatestReadings, getHistory, getMachineIds, getThresholds, setThreshold, getSetting, setSetting } from "./db";
+import { GAZ_CARPAN1_KEY, GAZ_CARPAN1_DEFAULT, GAZ_CARPAN2_KEY, GAZ_CARPAN2_DEFAULT } from "./gaz-formula-params";
 import { groups } from "./machines";
 
 const app = express();
@@ -145,6 +146,41 @@ app.get("/api/report", (req, res) => {
   }
 
   res.json({ periodSeconds, tagLabels, rows });
+});
+
+// Gaz sayaci debi hesabindaki sabit carpanlar (bkz. alccrline.ts) - sahada
+// gaz_sayaci_okumalar_formul.xlsx degisirse yeniden derlemeye gerek kalmadan
+// dashboard'dan ayarlanabilsin diye API uzerinden okunup yazilabiliyor.
+app.get("/api/gaz-formula-params", (_req, res) => {
+  res.json({
+    carpan1: getSetting(GAZ_CARPAN1_KEY, GAZ_CARPAN1_DEFAULT),
+    carpan2: getSetting(GAZ_CARPAN2_KEY, GAZ_CARPAN2_DEFAULT),
+  });
+});
+
+app.post("/api/gaz-formula-params", (req, res) => {
+  const { carpan1, carpan2 } = req.body ?? {};
+  if (carpan1 === undefined && carpan2 === undefined) {
+    res.status(400).json({ error: "carpan1 veya carpan2 gerekli" });
+    return;
+  }
+  if (carpan1 !== undefined) {
+    const n = Number(carpan1);
+    if (!Number.isFinite(n) || n === 0) {
+      res.status(400).json({ error: "carpan1 sifirdan farkli bir sayi olmali" });
+      return;
+    }
+    setSetting(GAZ_CARPAN1_KEY, n);
+  }
+  if (carpan2 !== undefined) {
+    const n = Number(carpan2);
+    if (!Number.isFinite(n) || n === 0) {
+      res.status(400).json({ error: "carpan2 sifirdan farkli bir sayi olmali" });
+      return;
+    }
+    setSetting(GAZ_CARPAN2_KEY, n);
+  }
+  res.json({ ok: true });
 });
 
 app.get("/api/thresholds", (_req, res) => {

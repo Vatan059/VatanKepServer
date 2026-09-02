@@ -85,6 +85,14 @@
   .stat-card.alert .value { color: var(--alarm); }
   .stat-card.alert .value::after { content: " ⚠"; }
 
+  /* gazDebiHesap kartindaki carpan1/carpan2 giris alanlari - formuldeki
+     sabitleri sahadan (kod degistirmeden) ayarlayabilmek icin. */
+  .formula-params { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+  .formula-params label { display: flex; align-items: center; gap: 3px; }
+  .formula-params input { width: 48px; font: inherit; font-size: 12px; padding: 2px 4px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); text-align: center; }
+  .formula-params .save-hint { font-size: 10px; color: var(--trend-up); opacity: 0; transition: opacity 0.2s; }
+  .formula-params .save-hint.show { opacity: 1; }
+
   /* Diyagram (borulu sema) + sol taraftaki gruplu bilgi panelleri */
   .dashboard-layout { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
   .side-panels { display: flex; flex-direction: column; gap: 14px; width: 260px; flex: 0 0 260px; }
@@ -338,9 +346,10 @@ const TAGS = [
 for (const t of TAGS) {
   const el = document.getElementById(`badge-${t.key}`);
   if (!el) continue;
+  const labelId = t.key === "gazDebiHesap" ? ' id="gazDebiHesapLabel"' : "";
   const flameSpan = t.flameTags ? `<span class="flame">-</span>` : "";
   const captionSpan = t.caption ? `<span class="caption">${t.caption}</span>` : "";
-  el.innerHTML = `<span class="label">${t.label}</span><span class="value">-</span>${flameSpan}${captionSpan}`;
+  el.innerHTML = `<span class="label"${labelId}>${t.label}</span><span class="value">-</span>${flameSpan}${captionSpan}`;
 
   const histBtn = document.createElement("button");
   histBtn.type = "button";
@@ -352,6 +361,71 @@ for (const t of TAGS) {
     openHistoryModal(t);
   });
   el.appendChild(histBtn);
+}
+
+// gazDebiHesap kartina, formuldeki carpan1/carpan2 sabitlerini sahadan
+// degistirebilmek icin iki kucuk sayi girisi ekleniyor. Deger degisince
+// /api/gaz-formula-params'a kaydedilir; alccrline.ts bir sonraki 10 dk'lik
+// hesapta bu yeni degerleri okur.
+const gazDebiHesapEl = document.getElementById("badge-gazDebiHesap");
+if (gazDebiHesapEl) {
+  const paramsRow = document.createElement("div");
+  paramsRow.className = "formula-params";
+  paramsRow.innerHTML = `
+    <label>×<input type="number" step="0.1" id="carpan1Input" title="Fark(m³) ile carpilan sabit"></label>
+    <label>÷<input type="number" step="1" id="carpan2Input" title="Sonucun bolundugu sabit (1 Saat / X)"></label>
+    <span class="save-hint" id="formulaSaveHint">✓ kaydedildi</span>
+  `;
+  gazDebiHesapEl.appendChild(paramsRow);
+
+  const carpan1Input = document.getElementById("carpan1Input");
+  const carpan2Input = document.getElementById("carpan2Input");
+  const saveHint = document.getElementById("formulaSaveHint");
+
+  // Input'a tiklayinca hist-btn/modal acilmasin diye tiklamalar burada durduruluyor.
+  paramsRow.addEventListener("click", (e) => e.stopPropagation());
+
+  function updateGazDebiHesapLabel(carpan2) {
+    const labelEl = document.getElementById("gazDebiHesapLabel");
+    const n = Number(carpan2);
+    const text = Number.isFinite(n) ? (Number.isInteger(n) ? String(n) : n.toFixed(1)) : String(carpan2);
+    if (labelEl) labelEl.textContent = `1 Saat / ${text} (Hesap)`;
+  }
+
+  async function loadFormulaParams() {
+    try {
+      const res = await fetch("/api/gaz-formula-params");
+      const data = await res.json();
+      carpan1Input.value = data.carpan1;
+      carpan2Input.value = data.carpan2;
+      updateGazDebiHesapLabel(data.carpan2);
+    } catch (err) {
+      console.error("gaz-formula-params yuklenemedi:", err);
+    }
+  }
+
+  async function saveFormulaParam(key, value) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n === 0) return;
+    try {
+      await fetch("/api/gaz-formula-params", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: n }),
+      });
+      if (key === "carpan2") updateGazDebiHesapLabel(n);
+      saveHint.classList.add("show");
+      clearTimeout(saveHint._hideTimer);
+      saveHint._hideTimer = setTimeout(() => saveHint.classList.remove("show"), 1500);
+    } catch (err) {
+      console.error("gaz-formula-params kaydedilemedi:", err);
+    }
+  }
+
+  carpan1Input.addEventListener("change", () => saveFormulaParam("carpan1", carpan1Input.value));
+  carpan2Input.addEventListener("change", () => saveFormulaParam("carpan2", carpan2Input.value));
+
+  loadFormulaParams();
 }
 
 function fmt(value) {

@@ -44,6 +44,11 @@ db.exec(`
     last_alert_at INTEGER,
     PRIMARY KEY (machine_id, tag_label)
   );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value REAL NOT NULL
+  );
 `);
 
 // last_bucket: "ramp" alarm modunda (bkz. alerts.ts) son bildirilen 100'luk
@@ -138,4 +143,21 @@ export function setAlertState(
   lastBucket: number | null = null
 ) {
   setAlertStateStmt.run(machineId, tagLabel, isAlerting ? 1 : 0, lastAlertAt, lastBucket);
+}
+
+// Genel amacli, tek degerli ayarlar (orn. bir hesap formulundeki sabit
+// carpanlar) - makine/tag'e bagli olmadigi icin thresholds'tan ayri, basit
+// bir key/value tablosu yeterli.
+const getSettingStmt = db.prepare("SELECT value FROM settings WHERE key = ?");
+export function getSetting(key: string, defaultValue: number): number {
+  const row = getSettingStmt.get(key) as { value: number } | undefined;
+  return row ? row.value : defaultValue;
+}
+
+const upsertSettingStmt = db.prepare(`
+  INSERT INTO settings (key, value) VALUES (?, ?)
+  ON CONFLICT(key) DO UPDATE SET value = excluded.value
+`);
+export function setSetting(key: string, value: number) {
+  upsertSettingStmt.run(key, value);
 }

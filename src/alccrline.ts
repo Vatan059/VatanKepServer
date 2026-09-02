@@ -26,8 +26,9 @@ import {
   DataValue,
   NodeClass,
 } from "node-opcua";
-import { recordReading } from "./db";
+import { recordReading, getSetting } from "./db";
 import { checkThresholdAndAlert } from "./alerts";
+import { GAZ_CARPAN1_KEY, GAZ_CARPAN1_DEFAULT, GAZ_CARPAN2_KEY, GAZ_CARPAN2_DEFAULT } from "./gaz-formula-params";
 
 const endpointUrl = process.env.OPCUA_ENDPOINT ?? "opc.tcp://192.168.5.95:49320";
 const CHANNEL_NAME = "ALCCRLINE";
@@ -36,7 +37,9 @@ const MAX_DEPTH = 10;
 const STRUCTURE_FILE = path.join(__dirname, "..", "alccrline-structure.json");
 
 // gaz_sayaci_okumalar_formul.xlsx'teki hesap zincirinin ayni birebir uygulanmasi:
-// Fark(m3) -> *2,1 (sabit) -> okuma dk farkina bol -> *60 (1 Saat) -> /4 (1 Saat/4).
+// Fark(m3) -> *carpan1 (varsayilan 2,1) -> okuma dk farkina bol -> *60 (1 Saat) -> /carpan2 (varsayilan 4).
+// carpan1/carpan2 sabit degil - dashboarddan (/api/gaz-formula-params) degistirilebilir,
+// bu yuzden her hesap tetiklendiginde settings tablosundan taze okunur (bkz. GAZ_CARPAN*_KEY).
 // Kaynak sayac GAZ_TOPLAM_TAG, hesaplanan deger GAZ_DEBI_HESAP_TAG olarak normal
 // bir tag gibi kaydedilir (recordReading) - boylece dashboard/gecmis/rapor tum
 // mekanizmalar degisiklik yapmadan bu tag'i de gosterebilir.
@@ -250,7 +253,9 @@ async function main() {
         const farkM3 = current - prev.value;
         const farkDk = (now - prev.at) / 60000;
         if (farkDk > 0) {
-          const hesap = ((farkM3 * 2.1) / farkDk) * 60 / 4;
+          const carpan1 = getSetting(GAZ_CARPAN1_KEY, GAZ_CARPAN1_DEFAULT);
+          const carpan2 = getSetting(GAZ_CARPAN2_KEY, GAZ_CARPAN2_DEFAULT);
+          const hesap = ((farkM3 * carpan1) / farkDk) * 60 / carpan2;
           recordReading(machineId, GAZ_DEBI_HESAP_TAG, hesap, now);
         }
       }
