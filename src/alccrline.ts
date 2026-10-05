@@ -8,6 +8,7 @@
 //   - DB6000 - Alarmlar.*           (alarm bitleri)
 //   - Genel Datatlar.* / GenelDatalar.*  (sicaklik PV, klape/damper pozisyonu, tarih/saat haric)
 //   - ScadaDB.*                     (Dinlendirme_A/B icin pota pozisyonu/durum bilgileri)
+//   - Scada DB.*                    (Rejen: baca klape ust/alt limitleri)
 //   - Kalıcı_Datalar.*              (KALICI_DATALAR_EXTRA'daki birkac tag - orn. kumulatif gaz sayaci)
 //   - TOP_LEVEL_EXTRA               (firin kokunde dogrudan duran birkac gaz sayaci/basinc tag'i)
 // Kesif sonucu ayni zamanda alccrline-structure.json'a yazilir ki dashboard
@@ -54,7 +55,7 @@ interface DiscoveredTag {
 
 // Furin dogrudan altinda sadece bu isimdeki klasorlere inilir - geri kalani
 // (brulor/timer sira kontrolu, iletisim paketleri vb.) hic taranmaz.
-const WANTED_TOP_GROUPS = ["KalibrasyonDB", "DB6000 - Alarmlar", "Genel Datatlar", "GenelDatalar", "ScadaDB", "Kalıcı_Datalar"];
+const WANTED_TOP_GROUPS = ["KalibrasyonDB", "DB6000 - Alarmlar", "Genel Datatlar", "GenelDatalar", "ScadaDB", "Scada DB", "Kalıcı_Datalar"];
 
 // Firin kokunde (klasorsuz, dogrudan) duran ama gerekli olan birkac tag -
 // bunlar WANTED_TOP_GROUPS'taki bir klasorun altinda degil, bu yuzden ayrica
@@ -89,6 +90,8 @@ function shouldKeep(label: string): boolean {
     return !GENEL_DATATLAR_EXCLUDE.some((ex) => label.includes(ex));
   }
   if (label.startsWith("ScadaDB.")) return true;
+  // Rejen'de klasor adi bosluklu: "Scada DB" (BacaKlapeMAx/Min = HMI'deki Klape Ust/Alt Limit)
+  if (label.startsWith("Scada DB.")) return true;
   if (label.startsWith("Kalıcı_Datalar.")) return KALICI_DATALAR_EXTRA.includes(label);
   if (TOP_LEVEL_EXTRA.includes(label)) return true;
   return false;
